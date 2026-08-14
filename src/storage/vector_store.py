@@ -30,36 +30,34 @@ class VectorStore:
             self.storage_dir / "memories.json"
         )
 
-        # Inner Product is used because our
-        # embeddings are normalized.
         self.index = faiss.IndexFlatIP(
             self.dimension
         )
 
-        # FAISS stores vectors, not our Memory objects.
-        # This list maps FAISS positions → memory IDs.
+        # FAISS position → memory ID
         self.memory_ids: list[str] = []
 
-        # Stores the actual memory metadata.
+        # memory ID → serialized memory
         self.memories: dict[str, dict] = {}
+
+    # ADDED
+ 
 
     def add(
         self,
         memory: Memory,
         embedding: np.ndarray
     ):
+        """
+        Add a new memory and its embedding.
+        """
 
-        vector = np.asarray(
-            embedding,
-            dtype="float32"
-        ).reshape(1, -1)
-
-        if vector.shape[1] != self.dimension:
+        if memory.memory_id in self.memories:
             raise ValueError(
-                f"Expected embedding dimension "
-                f"{self.dimension}, "
-                f"got {vector.shape[1]}"
+                f"Memory already exists: {memory.memory_id}"
             )
+
+        vector = self._validate_embedding(embedding)
 
         self.index.add(vector)
 
@@ -71,23 +69,36 @@ class VectorStore:
             memory.to_dict()
         )
 
+    # SEARCH
+
     def search(
         self,
         query_embedding: np.ndarray,
-        top_k: int = 5
+        top_k: int = 5,
+        min_score: float | None = None
     ):
+        """
+        Search for the most similar memories.
+
+        min_score can be used to reject memories
+        that are not sufficiently similar.
+        """
 
         if self.index.ntotal == 0:
             return []
 
-        vector = np.asarray(
-            query_embedding,
-            dtype="float32"
-        ).reshape(1, -1)
+        vector = self._validate_embedding(
+            query_embedding
+        )
+
+        top_k = min(
+            top_k,
+            self.index.ntotal
+        )
 
         scores, indices = self.index.search(
             vector,
-            min(top_k, self.index.ntotal)
+            top_k
         )
 
         results = []
@@ -100,17 +111,116 @@ class VectorStore:
             if index == -1:
                 continue
 
+            score = float(score)
+
+            if (
+                min_score is not None
+                and score < min_score
+            ):
+                continue
+
             memory_id = self.memory_ids[index]
 
             results.append({
                 "memory_id": memory_id,
-                "score": float(score),
+                "score": score,
                 "memory": self.memories[memory_id]
             })
 
         return results
+    
+    # UPDATE
+
+    def update(
+        self,
+        memory: Memory,
+        embedding: np.ndarray
+    ):
+        """
+        Update an existing memory.
+
+        FAISS IndexFlatIP does not directly provide
+        an application-level update operation, so we
+        rebuild the index after replacing the memory.
+        """
+
+        if memory.memory_id not in self.memories:
+            raise ValueError(
+                f"Memory not found: {memory.memory_id}"
+            )
+
+        vector = self._validate_embedding(
+            embedding
+        )
+
+        old_index = self.memory_ids.index(
+            memory.memory_id
+        )
+
+        vectors = self.index.reconstruct_n(
+            0,
+            self.index.ntotal
+        )
+
+        vectors[old_index] = vector[0]
+
+        self.memories[memory.memory_id] = (
+            memory.to_dict()
+        )
+
+        self.index = faiss.IndexFlatIP(
+            self.dimension
+        )
+
+        self.index.add(vectors)
+
+    # DELETE
+
+    def delete(
+        self,
+        memory_id: str
+    ):
+        """
+        Delete a memory from the vector store.
+        """
+
+        if memory_id not in self.memories:
+            raise ValueError(
+                f"Memory not found: {memory_id}"
+            )
+
+        delete_index = self.memory_ids.index(
+            memory_id
+        )
+
+        vectors = self.index.reconstruct_n(
+            0,
+            self.index.ntotal
+        )
+
+        vectors = np.delete(
+            vectors,
+            delete_index,
+            axis=0
+        )
+
+        self.memory_ids.pop(delete_index)
+
+        del self.memories[memory_id]
+
+        self.index = faiss.IndexFlatIP(
+            self.dimension
+        )
+
+        if len(vectors) > 0:
+            self.index.add(vectors)
+
+    # SAVE
 
     def save(self):
+        """
+        Persist FAISS index and memory metadata.
+        """
 
         faiss.write_index(
             self.index,
@@ -132,7 +242,12 @@ class VectorStore:
                 indent=2
             )
 
+    # LOAD
+
     def load(self):
+        """
+        Load persisted FAISS index and metadata.
+        """
 
         if not self.index_path.exists():
             return
@@ -155,5 +270,39 @@ class VectorStore:
         self.memory_ids = data["memory_ids"]
         self.memories = data["memories"]
 
+        if self.index.ntotal != len(
+            self.memory_ids
+        ):
+            raise ValueError(
+                "FAISS index and memory metadata "
+                "are out of sync."
+            )
+        
+    # COUNT
+
     def count(self) -> int:
         return self.index.ntotal
+
+    # INTERNAL VALIDATION
+
+    def _validate_embedding(
+        self,
+        embedding: np.ndarray
+    ) -> np.ndarray:
+        """
+        Validate and reshape an embedding.
+        """
+
+        vector = np.asarray(
+            embedding,
+            dtype="float32"
+        ).reshape(1, -1)
+
+        if vector.shape[1] != self.dimension:
+            raise ValueError(
+                f"Expected embedding dimension "
+                f"{self.dimension}, "
+                f"got {vector.shape[1]}"
+            )
+
+        return vector
