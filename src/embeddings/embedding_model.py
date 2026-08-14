@@ -45,4 +45,4 @@ class EmbeddingModel:
         Return the embedding dimension.
         """
 
-        return self.model.get_sentence_embedding_dimension()
+        return self.model.get_embedding_dimension()
