@@ -1,4 +1,10 @@
-from src.models.memory import Memory, MemoryType, MemoryStatus
+from datetime import datetime
+
+from src.models.memory import (
+    Memory,
+    MemoryType,
+    MemoryStatus
+)
 
 
 def test_memory_creation():
@@ -50,3 +56,72 @@ def test_memory_forget():
     memory.forget()
 
     assert memory.status == MemoryStatus.FORGOTTEN
+
+
+def test_memory_has_created_at():
+
+    memory = Memory(
+        content="I attended an AI workshop.",
+        memory_type=MemoryType.EPISODIC
+    )
+
+    assert isinstance(
+        memory.created_at,
+        datetime
+    )
+
+
+def test_episodic_memory_event_time():
+
+    event_time = datetime(
+        2026,
+        8,
+        10,
+        15,
+        30
+    )
+
+    memory = Memory(
+        content="I attended an AI workshop.",
+        memory_type=MemoryType.EPISODIC,
+        event_time=event_time
+    )
+
+    assert memory.event_time == event_time
+
+
+def test_event_time_can_be_none():
+
+    memory = Memory(
+        content="I prefer Python.",
+        memory_type=MemoryType.SEMANTIC
+    )
+
+    assert memory.event_time is None
+
+
+def test_memory_serialization_contains_temporal_fields():
+
+    event_time = datetime(
+        2026,
+        8,
+        10,
+        15,
+        30
+    )
+
+    memory = Memory(
+        content="I attended an AI workshop.",
+        memory_type=MemoryType.EPISODIC,
+        event_time=event_time
+    )
+
+    data = memory.to_dict()
+
+    assert "created_at" in data
+    assert "event_time" in data
+
+    assert (
+        data["event_time"]
+        == event_time.isoformat()
+    )

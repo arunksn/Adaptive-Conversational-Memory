@@ -26,9 +26,14 @@ class Memory:
         default_factory=lambda: str(uuid.uuid4())
     )
 
-    timestamp: datetime = field(
+    # When the system created/stored this memory.
+    created_at: datetime = field(
         default_factory=datetime.now
     )
+
+    # When the actual event happened.
+    # For semantic/procedural memories this can remain None.
+    event_time: Optional[datetime] = None
 
     importance: float = 0.5
     confidence: float = 1.0
@@ -37,9 +42,13 @@ class Memory:
 
     source: Optional[str] = None
 
-    entities: list[str] = field(default_factory=list)
+    entities: list[str] = field(
+        default_factory=list
+    )
 
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(
+        default_factory=dict
+    )
 
     access_count: int = 0
 
@@ -47,8 +56,9 @@ class Memory:
 
     def access(self):
         """
-        Record that this memory was retrieved/used.
+        Record that this memory was retrieved or used.
         """
+
         self.access_count += 1
         self.last_accessed = datetime.now()
 
@@ -56,23 +66,42 @@ class Memory:
         """
         Move the memory to archived state.
         """
+
         self.status = MemoryStatus.ARCHIVED
 
     def forget(self):
         """
         Mark the memory as forgotten.
         """
+
         self.status = MemoryStatus.FORGOTTEN
+
+    @property
+    def timestamp(self) -> datetime:
+        """
+        Backward-compatible alias for created_at.
+
+        Existing parts of the project that use
+        'timestamp' can continue to work.
+        """
+
+        return self.created_at
 
     def to_dict(self) -> dict:
         """
         Convert memory into a serializable dictionary.
         """
+
         return {
             "memory_id": self.memory_id,
             "content": self.content,
             "memory_type": self.memory_type.value,
-            "timestamp": self.timestamp.isoformat(),
+            "created_at": self.created_at.isoformat(),
+            "event_time": (
+                self.event_time.isoformat()
+                if self.event_time
+                else None
+            ),
             "importance": self.importance,
             "confidence": self.confidence,
             "status": self.status.value,
@@ -86,8 +115,6 @@ class Memory:
                 else None
             ),
         }
-    
-
 
 
 # For example:
