@@ -26,12 +26,22 @@ class ConsolidationResult:
     """
     Result produced after consolidating a group of
     episodic memories.
+
+    semantic_memory:
+        The resulting or updated semantic memory.
+
+    created:
+        True when a new semantic memory was created.
+
+        False when an existing semantic memory was
+        reinforced/updated.
     """
 
     source_memories: list[Memory]
     semantic_memory: Memory
     frequency: int
     similarity: float
+    created: bool
 
 
 class MemoryConsolidator:
@@ -157,47 +167,154 @@ class MemoryConsolidator:
 
     def consolidate(
         self,
-        memories: list[Memory]
+        memories: list[Memory],
+        existing_semantic_memories: (
+            list[Memory] | None
+        ) = None
     ) -> list[ConsolidationResult]:
         """
         Consolidate qualifying episodic memory groups
         into semantic memories.
 
-        Source episodic memories are preserved.
+        If an existing semantic memory sufficiently
+        matches a consolidation candidate, that semantic
+        memory is reinforced instead of creating a
+        duplicate.
+
+        Source episodic memories are always preserved.
         """
 
         candidates = self.find_candidates(
             memories
         )
 
+        semantic_memories = (
+            existing_semantic_memories
+            if existing_semantic_memories is not None
+            else []
+        )
+
         results = []
 
         for candidate in candidates:
 
-            semantic_memory = (
-                self._create_semantic_memory(
+            existing = (
+                self._find_existing_semantic_memory(
+                    candidate,
+                    semantic_memories
+                )
+            )
+
+            if existing is not None:
+
+                self._reinforce_semantic_memory(
+                    existing,
                     candidate
                 )
-            )
 
-            results.append(
-                ConsolidationResult(
-                    source_memories=(
-                        candidate.memories
-                    ),
-                    semantic_memory=(
-                        semantic_memory
-                    ),
-                    frequency=(
-                        candidate.frequency
-                    ),
-                    similarity=(
-                        candidate.similarity
+                results.append(
+                    ConsolidationResult(
+                        source_memories=(
+                            candidate.memories
+                        ),
+                        semantic_memory=existing,
+                        frequency=(
+                            candidate.frequency
+                        ),
+                        similarity=(
+                            candidate.similarity
+                        ),
+                        created=False
                     )
                 )
-            )
+
+            else:
+
+                semantic_memory = (
+                    self._create_semantic_memory(
+                        candidate
+                    )
+                )
+
+                semantic_memories.append(
+                    semantic_memory
+                )
+
+                results.append(
+                    ConsolidationResult(
+                        source_memories=(
+                            candidate.memories
+                        ),
+                        semantic_memory=(
+                            semantic_memory
+                        ),
+                        frequency=(
+                            candidate.frequency
+                        ),
+                        similarity=(
+                            candidate.similarity
+                        ),
+                        created=True
+                    )
+                )
 
         return results
+
+
+    def _find_existing_semantic_memory(
+        self,
+        candidate: ConsolidationCandidate,
+        semantic_memories: list[Memory]
+    ) -> Memory | None:
+        """
+        Find an existing semantic memory that is
+        sufficiently similar to the consolidation
+        candidate.
+
+        The representative episodic memory is used as
+        the comparison point.
+        """
+
+        if not semantic_memories:
+            return None
+
+        representative = max(
+            candidate.memories,
+            key=lambda memory: (
+                memory.importance,
+                memory.access_count
+            )
+        )
+
+        best_memory = None
+        best_similarity = 0.0
+
+        for semantic_memory in semantic_memories:
+
+            if (
+                semantic_memory.memory_type
+                != MemoryType.SEMANTIC
+            ):
+                continue
+
+            similarity = self._similarity(
+                representative,
+                semantic_memory
+            )
+
+            if similarity > best_similarity:
+
+                best_similarity = similarity
+                best_memory = semantic_memory
+
+        if (
+            best_memory is not None
+            and best_similarity
+            >= self.similarity_threshold
+        ):
+            return best_memory
+
+        return None
 
 
     def _create_semantic_memory(
@@ -233,7 +350,6 @@ class MemoryConsolidator:
             )
         )
 
-        # Store consolidation metadata.
         semantic_memory.metadata[
             "consolidated"
         ] = True
@@ -253,10 +369,114 @@ class MemoryConsolidator:
             "source_similarity"
         ] = candidate.similarity
 
+        semantic_memory.metadata[
+            "consolidation_version"
+        ] = 1
+
         return semantic_memory
 
-    # TEXT NORMALIZATION
-  
+
+    def _reinforce_semantic_memory(
+        self,
+        semantic_memory: Memory,
+        candidate: ConsolidationCandidate
+    ) -> None:
+        """
+        Reinforce an existing semantic memory instead
+        of creating a duplicate.
+
+        The existing semantic memory keeps its identity
+        while its importance, reinforcement count, and
+        source history are updated.
+        """
+
+        metadata = semantic_memory.metadata
+
+        current_count = metadata.get(
+            "reinforcement_count",
+            1
+        )
+
+        metadata[
+            "reinforcement_count"
+        ] = (
+            current_count
+            + candidate.frequency
+        )
+
+        existing_source_ids = metadata.get(
+            "source_memory_ids",
+            []
+        )
+
+        if existing_source_ids is None:
+            existing_source_ids = []
+
+        for memory in candidate.memories:
+
+            if (
+                memory.memory_id
+                not in existing_source_ids
+            ):
+
+                existing_source_ids.append(
+                    memory.memory_id
+                )
+
+        metadata[
+            "source_memory_ids"
+        ] = existing_source_ids
+
+        previous_similarity = metadata.get(
+            "source_similarity",
+            candidate.similarity
+        )
+
+        previous_count = max(
+            1,
+            current_count
+        )
+
+        metadata[
+            "source_similarity"
+        ] = (
+            (
+                previous_similarity
+                * previous_count
+            )
+            +
+            (
+                candidate.similarity
+                * candidate.frequency
+            )
+        ) / (
+            previous_count
+            + candidate.frequency
+        )
+
+        metadata[
+            "consolidated"
+        ] = True
+
+        metadata[
+            "consolidation_version"
+        ] = metadata.get(
+            "consolidation_version",
+            1
+        ) + 1
+
+        # Reinforce importance without allowing it
+        # to exceed the normalized range.
+
+        semantic_memory.importance = min(
+            1.0,
+            semantic_memory.importance
+            + (
+                candidate.importance
+                * 0.10
+            )
+        )
+
 
     @staticmethod
     def _normalize(
@@ -270,7 +490,6 @@ class MemoryConsolidator:
             text.lower().strip().split()
         )
 
-    # MEMORY SIMILARITY
 
     def _similarity(
         self,
@@ -322,8 +541,6 @@ class MemoryConsolidator:
             )
             for existing in cluster
         )
-
-    # AVERAGE CLUSTER SIMILARITY
 
 
     def _average_cluster_similarity(

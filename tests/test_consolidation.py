@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pytest
 
 from src.consolidation.memory_consolidator import (
@@ -26,13 +24,14 @@ def create_episodic_memory(
 
 
 def create_semantic_memory(
-    content
+    content,
+    importance=0.5
 ):
     return Memory(
         content=content,
-        memory_type=MemoryType.SEMANTIC
+        memory_type=MemoryType.SEMANTIC,
+        importance=importance
     )
-
 
 # INITIALIZATION
 
@@ -237,7 +236,8 @@ def test_mixed_memory_types_only_use_episodic():
         == 2
     )
 
-# CONSOLIDATION
+
+# NEW SEMANTIC MEMORY
 
 def test_consolidation_creates_semantic_memory():
 
@@ -272,6 +272,11 @@ def test_consolidation_creates_semantic_memory():
     assert (
         semantic.content
         == "I use Python."
+    )
+
+    assert (
+        results[0].created
+        is True
     )
 
 
@@ -504,4 +509,309 @@ def test_consolidation_result_contains_similarity():
         0.0
         <= results[0].similarity
         <= 1.0
+    )
+
+# EXISTING SEMANTIC MEMORY
+
+def test_existing_semantic_memory_is_reinforced():
+
+    consolidator = MemoryConsolidator()
+
+    episodic_memories = [
+        create_episodic_memory(
+            "I use Python.",
+            importance=0.8
+        ),
+        create_episodic_memory(
+            "I use Python.",
+            importance=0.7
+        )
+    ]
+
+    existing = create_semantic_memory(
+        "I use Python.",
+        importance=0.6
+    )
+
+    results = consolidator.consolidate(
+        episodic_memories,
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    assert len(results) == 1
+
+    assert (
+        results[0].created
+        is False
+    )
+
+    assert (
+        results[0].semantic_memory
+        is existing
+    )
+
+
+def test_existing_semantic_memory_is_not_duplicated():
+
+    consolidator = MemoryConsolidator()
+
+    episodic_memories = [
+        create_episodic_memory(
+            "I use Python."
+        ),
+        create_episodic_memory(
+            "I use Python."
+        )
+    ]
+
+    existing = create_semantic_memory(
+        "I use Python."
+    )
+
+    results = consolidator.consolidate(
+        episodic_memories,
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    assert len(results) == 1
+
+    assert (
+        results[0].semantic_memory
+        is existing
+    )
+
+
+def test_existing_semantic_reinforcement_increases_count():
+
+    consolidator = MemoryConsolidator()
+
+    existing = create_semantic_memory(
+        "I use Python."
+    )
+
+    existing.metadata[
+        "reinforcement_count"
+    ] = 3
+
+    episodic_memories = [
+        create_episodic_memory(
+            "I use Python."
+        ),
+        create_episodic_memory(
+            "I use Python."
+        )
+    ]
+
+    results = consolidator.consolidate(
+        episodic_memories,
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    semantic = (
+        results[0].semantic_memory
+    )
+
+    assert (
+        semantic.metadata[
+            "reinforcement_count"
+        ]
+        == 5
+    )
+
+
+def test_existing_semantic_source_ids_are_extended():
+
+    consolidator = MemoryConsolidator()
+
+    existing = create_semantic_memory(
+        "I use Python."
+    )
+
+    existing.metadata[
+        "source_memory_ids"
+    ] = [
+        "old-memory-id"
+    ]
+
+    first = create_episodic_memory(
+        "I use Python."
+    )
+
+    second = create_episodic_memory(
+        "I use Python."
+    )
+
+    results = consolidator.consolidate(
+        [
+            first,
+            second
+        ],
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    semantic = (
+        results[0].semantic_memory
+    )
+
+    source_ids = semantic.metadata[
+        "source_memory_ids"
+    ]
+
+    assert "old-memory-id" in source_ids
+
+    assert first.memory_id in source_ids
+
+    assert second.memory_id in source_ids
+
+
+def test_existing_semantic_importance_is_reinforced():
+
+    consolidator = MemoryConsolidator()
+
+    existing = create_semantic_memory(
+        "I use Python.",
+        importance=0.5
+    )
+
+    episodic_memories = [
+        create_episodic_memory(
+            "I use Python.",
+            importance=0.9
+        ),
+        create_episodic_memory(
+            "I use Python.",
+            importance=0.9
+        )
+    ]
+
+    original_importance = (
+        existing.importance
+    )
+
+    consolidator.consolidate(
+        episodic_memories,
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    assert (
+        existing.importance
+        > original_importance
+    )
+
+    assert (
+        existing.importance
+        <= 1.0
+    )
+
+
+def test_existing_semantic_consolidation_version_increases():
+
+    consolidator = MemoryConsolidator()
+
+    existing = create_semantic_memory(
+        "I use Python."
+    )
+
+    existing.metadata[
+        "consolidation_version"
+    ] = 2
+
+    episodic_memories = [
+        create_episodic_memory(
+            "I use Python."
+        ),
+        create_episodic_memory(
+            "I use Python."
+        )
+    ]
+
+    consolidator.consolidate(
+        episodic_memories,
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    assert (
+        existing.metadata[
+            "consolidation_version"
+        ]
+        == 3
+    )
+
+
+def test_dissimilar_semantic_memory_does_not_match():
+
+    consolidator = MemoryConsolidator()
+
+    episodic_memories = [
+        create_episodic_memory(
+            "I use Python."
+        ),
+        create_episodic_memory(
+            "I use Python."
+        )
+    ]
+
+    existing = create_semantic_memory(
+        "I live in Chennai."
+    )
+
+    results = consolidator.consolidate(
+        episodic_memories,
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    assert len(results) == 1
+
+    assert (
+        results[0].created
+        is True
+    )
+
+    assert (
+        results[0].semantic_memory
+        is not existing
+    )
+
+
+def test_semantic_memory_content_is_preserved_when_reinforced():
+
+    consolidator = MemoryConsolidator()
+
+    existing = create_semantic_memory(
+        "I primarily use Python for ML."
+    )
+
+    episodic_memories = [
+        create_episodic_memory(
+            "I primarily use Python for ML."
+        ),
+        create_episodic_memory(
+            "I primarily use Python for ML."
+        )
+    ]
+
+    consolidator.consolidate(
+        episodic_memories,
+        existing_semantic_memories=[
+            existing
+        ]
+    )
+
+    assert (
+        existing.content
+        == "I primarily use Python for ML."
     )
