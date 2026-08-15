@@ -21,10 +21,9 @@ def test_semantic_preference_query(router):
         MemoryRoute.SEMANTIC
     )
 
-    assert (
+    assert result.routes == [
         MemoryRoute.SEMANTIC
-        in result.routes
-    )
+    ]
 
 
 def test_semantic_fact_query(router):
@@ -33,9 +32,8 @@ def test_semantic_fact_query(router):
         "What information do you know about my project?"
     )
 
-    assert (
+    assert result.primary_route == (
         MemoryRoute.SEMANTIC
-        in result.routes
     )
 
 
@@ -49,6 +47,10 @@ def test_episodic_yesterday_query(router):
         MemoryRoute.EPISODIC
     )
 
+    assert result.routes == [
+        MemoryRoute.EPISODIC
+    ]
+
 
 def test_episodic_last_month_query(router):
 
@@ -60,6 +62,10 @@ def test_episodic_last_month_query(router):
         MemoryRoute.EPISODIC
     )
 
+    assert result.routes == [
+        MemoryRoute.EPISODIC
+    ]
+
 
 def test_episodic_previous_conversation(router):
 
@@ -67,10 +73,9 @@ def test_episodic_previous_conversation(router):
         "What did I say in our previous conversation?"
     )
 
-    assert (
+    assert result.routes == [
         MemoryRoute.EPISODIC
-        in result.routes
-    )
+    ]
 
 
 def test_procedural_how_to_query(router):
@@ -82,6 +87,10 @@ def test_procedural_how_to_query(router):
     assert result.primary_route == (
         MemoryRoute.PROCEDURAL
     )
+
+    assert result.routes == [
+        MemoryRoute.PROCEDURAL
+    ]
 
 
 def test_procedural_steps_query(router):
@@ -106,6 +115,17 @@ def test_procedural_workflow_query(router):
     )
 
 
+def test_deploying_is_procedural(router):
+
+    result = router.route(
+        "What should I do when deploying my application?"
+    )
+
+    assert result.primary_route == (
+        MemoryRoute.PROCEDURAL
+    )
+
+
 def test_multi_memory_query(router):
 
     result = router.route(
@@ -121,6 +141,8 @@ def test_multi_memory_query(router):
         MemoryRoute.PROCEDURAL
         in result.routes
     )
+
+    assert len(result.routes) == 2
 
 
 def test_unknown_query_defaults_to_semantic(router):

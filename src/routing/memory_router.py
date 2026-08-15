@@ -25,10 +25,9 @@ class RoutingResult:
 
 class MemoryRouter:
 
-    # ROUTING KEYWORDS
+    # TEMPORAL SIGNALS
 
     TEMPORAL_KEYWORDS = {
-        "when",
         "yesterday",
         "today",
         "tomorrow",
@@ -56,8 +55,14 @@ class MemoryRouter:
         "did",
     }
 
+    # PROCEDURAL SIGNALS
+
+    # Avoid generic grammatical words such as "do".
+    #
+    # These keywords represent actual procedural concepts
+    # or actions.
+
     PROCEDURAL_KEYWORDS = {
-        "how",
         "steps",
         "step",
         "procedure",
@@ -66,34 +71,60 @@ class MemoryRouter:
         "guide",
         "instructions",
         "deploy",
+        "deploying",
+        "deployed",
+        "deployment",
         "install",
+        "installing",
+        "installed",
+        "installation",
         "configure",
+        "configuring",
+        "configured",
+        "configuration",
         "setup",
-        "set",
         "build",
-        "run",
+        "building",
+        "built",
         "execute",
+        "executing",
+        "execution",
         "perform",
-        "do",
+        "performing",
+        "run",
+        "running",
     }
 
+    # SEMANTIC SIGNALS
+
+    # These are strong semantic-memory indicators.
+    #
+    # Generic question words such as:
+    # what, who, where, why, how
+    #
+    # are intentionally excluded.
+
     SEMANTIC_KEYWORDS = {
-        "what",
-        "which",
-        "who",
-        "where",
-        "why",
         "prefer",
         "preference",
+        "preferences",
         "like",
-        "know",
-        "fact",
-        "information",
+        "likes",
         "favorite",
         "favourite",
         "usually",
         "always",
+        "fact",
+        "facts",
+        "information",
+        "knowledge",
+        "know",
+        "believe",
+        "interest",
+        "interests",
     }
+
+    # ROUTING
 
     def route(
         self,
@@ -101,10 +132,9 @@ class MemoryRouter:
     ) -> RoutingResult:
         """
         Analyze a query and determine which memory
-        source should be used.
+        source or sources should be used.
 
-        This is intentionally deterministic for the
-        first version of the routing system.
+        This is the deterministic routing baseline.
         """
 
         if not query or not query.strip():
@@ -112,7 +142,11 @@ class MemoryRouter:
                 "Query cannot be empty."
             )
 
-        tokens = self._tokenize(query)
+        normalized_query = query.lower()
+
+        tokens = self._tokenize(
+            query
+        )
 
         scores = {
             MemoryRoute.SEMANTIC: 0,
@@ -120,7 +154,6 @@ class MemoryRouter:
             MemoryRoute.PROCEDURAL: 0,
         }
 
-        # TEMPORAL SIGNALS
 
         temporal_matches = (
             tokens
@@ -129,7 +162,9 @@ class MemoryRouter:
 
         scores[
             MemoryRoute.EPISODIC
-        ] += len(temporal_matches) * 2
+        ] += len(
+            temporal_matches
+        ) * 2
 
         # PROCEDURAL SIGNALS
 
@@ -140,9 +175,10 @@ class MemoryRouter:
 
         scores[
             MemoryRoute.PROCEDURAL
-        ] += len(procedural_matches) * 2
+        ] += len(
+            procedural_matches
+        ) * 2
 
-        # SEMANTIC SIGNALS
 
         semantic_matches = (
             tokens
@@ -151,9 +187,10 @@ class MemoryRouter:
 
         scores[
             MemoryRoute.SEMANTIC
-        ] += len(semantic_matches)
+        ] += len(
+            semantic_matches
+        )
 
-        # TEMPORAL PHRASE SIGNALS
 
         temporal_phrases = [
             "last month",
@@ -169,13 +206,12 @@ class MemoryRouter:
 
         for phrase in temporal_phrases:
 
-            if phrase in query.lower():
+            if phrase in normalized_query:
 
                 scores[
                     MemoryRoute.EPISODIC
                 ] += 3
 
-        # PROCEDURAL PHRASE SIGNALS
 
         procedural_phrases = [
             "how do i",
@@ -186,23 +222,25 @@ class MemoryRouter:
             "guide me",
             "instructions for",
             "what should i do",
+            "when deploying",
+            "when installing",
+            "when configuring",
         ]
 
         for phrase in procedural_phrases:
 
-            if phrase in query.lower():
+            if phrase in normalized_query:
 
                 scores[
                     MemoryRoute.PROCEDURAL
                 ] += 3
 
-        # DETERMINE ROUTES
+        # NO STRONG SIGNAL
 
         max_score = max(
             scores.values()
         )
 
-        # No strong signal = semantic is the default.
         if max_score == 0:
 
             return RoutingResult(
@@ -217,36 +255,50 @@ class MemoryRouter:
                 )
             )
 
+
         ranked_routes = sorted(
             scores.items(),
             key=lambda item: item[1],
             reverse=True
         )
 
+        primary_route = ranked_routes[0][0]
         primary_score = ranked_routes[0][1]
 
         selected_routes = [
-            route
-            for route, score in ranked_routes
-            if score > 0
+            primary_route
         ]
 
-        # If multiple memory types have strong and
-        # comparable signals, return multiple routes.
+        # SECONDARY MEMORY SOURCE
+
         if len(ranked_routes) > 1:
 
+            second_route = ranked_routes[1][0]
             second_score = ranked_routes[1][1]
+
+            # A secondary route is only included when
+            # it has a meaningful signal and is at least
+            # half as strong as the primary intent.
+            #
+            # This allows queries such as:
+            #
+            # "What did I previously do when deploying
+            #  my project?"
+            #
+            # to use both episodic and procedural memory.
+            #
+            # At the same time, weak grammatical signals
+            # cannot create unnecessary routes.
 
             if (
                 second_score > 0
-                and second_score >= primary_score * 0.75
+                and second_score >= primary_score * 0.50
             ):
 
-                selected_routes = [
-                    route
-                    for route, score in ranked_routes
-                    if score >= primary_score * 0.75
-                ]
+                selected_routes.append(
+                    second_route
+                )
+
 
         confidence = min(
             1.0,
@@ -307,26 +359,35 @@ class MemoryRouter:
         reasons = []
 
         if temporal_matches:
+
             reasons.append(
                 "temporal signals: "
                 + ", ".join(
-                    sorted(temporal_matches)
+                    sorted(
+                        temporal_matches
+                    )
                 )
             )
 
         if procedural_matches:
+
             reasons.append(
                 "procedural signals: "
                 + ", ".join(
-                    sorted(procedural_matches)
+                    sorted(
+                        procedural_matches
+                    )
                 )
             )
 
         if semantic_matches:
+
             reasons.append(
                 "semantic signals: "
                 + ", ".join(
-                    sorted(semantic_matches)
+                    sorted(
+                        semantic_matches
+                    )
                 )
             )
 
