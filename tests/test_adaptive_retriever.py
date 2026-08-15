@@ -6,29 +6,15 @@ from src.models.memory import (
 )
 
 from src.models.procedure import (
-    Procedure,
-    ProcedureState,
-    ProcedureTransition
+    ProcedureState
 )
 
 from src.retrieval.adaptive_retriever import (
     AdaptiveRetriever
 )
 
-from src.retrieval.graph_retriever import (
-    GraphRetriever
-)
-
 from src.retrieval.hybrid_retriever import (
     HybridRetriever
-)
-
-from src.retrieval.temporal_retriever import (
-    TemporalRetriever
-)
-
-from src.retrieval.vector_retriever import (
-    VectorRetriever
 )
 
 from src.routing.memory_router import (
@@ -36,7 +22,6 @@ from src.routing.memory_router import (
     MemoryRouter
 )
 
-# FAKE SEMANTIC RETRIEVER
 
 
 class FakeVectorRetriever:
@@ -68,6 +53,59 @@ class FakeVectorRetriever:
         ]
 
 
+class FakeConflictVectorRetriever:
+
+    def __init__(self):
+        self.calls = []
+
+    def search(
+        self,
+        query,
+        top_k=5
+    ):
+
+        self.calls.append(
+            query
+        )
+
+        older = Memory(
+            content="I use TensorFlow.",
+            memory_type=MemoryType.SEMANTIC,
+            event_time=datetime(
+                2026,
+                1,
+                1
+            ),
+            importance=0.8
+        )
+
+        newer = Memory(
+            content="I switched to PyTorch.",
+            memory_type=MemoryType.SEMANTIC,
+            event_time=datetime(
+                2026,
+                8,
+                1
+            ),
+            importance=0.9
+        )
+
+        older.confidence = 0.8
+        newer.confidence = 0.9
+
+        return [
+            {
+                "memory_id": older.memory_id,
+                "score": 0.90,
+                "memory": older
+            },
+            {
+                "memory_id": newer.memory_id,
+                "score": 0.95,
+                "memory": newer
+            }
+        ]
+
 
 class FakeTemporalRetriever:
 
@@ -90,7 +128,11 @@ class FakeTemporalRetriever:
         memory = Memory(
             content="I attended an AI workshop.",
             memory_type=MemoryType.EPISODIC,
-            event_time=datetime(2026, 8, 10),
+            event_time=datetime(
+                2026,
+                8,
+                10
+            ),
             importance=0.8
         )
 
@@ -108,12 +150,15 @@ class FakeTemporalRetriever:
         memory = Memory(
             content="Recent conversation event.",
             memory_type=MemoryType.EPISODIC,
-            event_time=datetime(2026, 8, 20),
+            event_time=datetime(
+                2026,
+                8,
+                20
+            ),
             importance=0.7
         )
 
         return [memory]
-
 
 
 class FakeGraphRetriever:
@@ -140,11 +185,39 @@ class FakeGraphRetriever:
 
         return [state]
 
-# FACTORY
+
 
 def create_adaptive_retriever():
 
     vector = FakeVectorRetriever()
+
+    temporal = FakeTemporalRetriever()
+
+    graph = FakeGraphRetriever()
+
+    hybrid = HybridRetriever(
+        vector_retriever=vector,
+        temporal_retriever=temporal,
+        graph_retriever=graph
+    )
+
+    adaptive = AdaptiveRetriever(
+        router=MemoryRouter(),
+        hybrid_retriever=hybrid
+    )
+
+    return (
+        adaptive,
+        vector,
+        temporal,
+        graph
+    )
+
+
+
+def create_conflict_adaptive_retriever():
+
+    vector = FakeConflictVectorRetriever()
 
     temporal = FakeTemporalRetriever()
 
@@ -199,6 +272,7 @@ def test_semantic_query():
     assert len(graph.calls) == 0
 
 
+
 def test_episodic_query():
 
     (
@@ -231,7 +305,6 @@ def test_episodic_query():
     )
 
     assert len(graph.calls) == 0
-
 
 
 def test_episodic_explicit_time_range():
@@ -271,6 +344,7 @@ def test_episodic_explicit_time_range():
         temporal.calls[0]
         == (start, end)
     )
+
 
 
 def test_procedural_query():
@@ -331,7 +405,7 @@ def test_procedural_query_without_context():
 
     assert len(graph.calls) == 0
 
-# MULTI-MEMORY ROUTING
+
 
 def test_multi_memory_query():
 
@@ -376,7 +450,7 @@ def test_multi_memory_query():
         in sources
     )
 
-# TOP-K
+
 
 def test_top_k():
 
@@ -395,7 +469,6 @@ def test_top_k():
     assert len(results) <= 1
 
 
-
 def test_empty_query():
 
     (
@@ -412,3 +485,131 @@ def test_empty_query():
     except ValueError:
 
         assert True
+
+def test_conflict_is_detected_and_resolved():
+
+    (
+        adaptive,
+        vector,
+        temporal,
+        graph
+    ) = create_conflict_adaptive_retriever()
+
+    routing, results = adaptive.retrieve(
+        "What technology do I use?"
+    )
+
+    assert routing.primary_route == (
+        MemoryRoute.SEMANTIC
+    )
+
+    # Two conflicting memories were retrieved,
+    # but only the preferred/current memory remains
+    # in the final result set.
+
+    assert len(results) == 1
+
+    result = results[0]
+
+    assert result.item.content == (
+        "I switched to PyTorch."
+    )
+
+    assert result.metadata[
+        "conflict_resolved"
+    ] is True
+
+    assert (
+        "conflict_reason"
+        in result.metadata
+    )
+
+    assert (
+        "conflict_confidence"
+        in result.metadata
+    )
+
+
+def test_historical_memory_is_preserved_after_resolution():
+
+    (
+        adaptive,
+        vector,
+        temporal,
+        graph
+    ) = create_conflict_adaptive_retriever()
+
+    routing, results = adaptive.retrieve(
+        "What technology do I use?"
+    )
+
+    assert len(results) == 1
+
+    result = results[0]
+
+    assert (
+        "historical_memories"
+        in result.metadata
+    )
+
+    historical = (
+        result.metadata[
+            "historical_memories"
+        ]
+    )
+
+    assert len(historical) == 1
+
+    assert historical[0][
+        "content"
+    ] == "I use TensorFlow."
+
+
+def test_non_conflicting_memory_is_unchanged():
+
+    (
+        adaptive,
+        vector,
+        temporal,
+        graph
+    ) = create_adaptive_retriever()
+
+    routing, results = adaptive.retrieve(
+        "What programming language do I prefer?"
+    )
+
+    assert len(results) == 1
+
+    result = results[0]
+
+    assert result.item.content == (
+        "I prefer Python."
+    )
+
+    assert (
+        "conflict_resolved"
+        not in result.metadata
+    )
+
+
+def test_conflict_does_not_change_routing():
+
+    (
+        adaptive,
+        vector,
+        temporal,
+        graph
+    ) = create_conflict_adaptive_retriever()
+
+    routing, results = adaptive.retrieve(
+        "What technology do I use?"
+    )
+
+    assert routing.primary_route == (
+        MemoryRoute.SEMANTIC
+    )
+
+    assert (
+        MemoryRoute.SEMANTIC
+        in routing.routes
+    )
