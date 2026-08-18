@@ -1,0 +1,344 @@
+{
+  "memory_ids": [
+    "memory-python-preference",
+    "memory-career-goal",
+    "memory-postgresql",
+    "memory-go-backend",
+    "memory-yesterday-project",
+    "memory-vector-memory",
+    "memory-conference",
+    "memory-internship-project",
+    "memory-deployment-procedure",
+    "memory-project-workflow",
+    "memory-environment-setup",
+    "memory-old-language",
+    "memory-current-language",
+    "memory-current-database",
+    "memory-old-database"
+  ],
+  "memories": {
+    "memory-python-preference": {
+      "memory_id": "memory-python-preference",
+      "content": "I prefer Python for machine learning and data science projects.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:00:00",
+      "event_time": null,
+      "importance": 0.9,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "Python",
+        "machine learning",
+        "data science"
+      ],
+      "metadata": {
+        "category": "preference",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-career-goal": {
+      "memory_id": "memory-career-goal",
+      "content": "I am interested in artificial intelligence, machine learning, and backend development.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:05:00",
+      "event_time": null,
+      "importance": 0.9,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "artificial intelligence",
+        "machine learning",
+        "backend development"
+      ],
+      "metadata": {
+        "category": "interest",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-postgresql": {
+      "memory_id": "memory-postgresql",
+      "content": "I usually use PostgreSQL when I need a relational database for my projects.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:10:00",
+      "event_time": null,
+      "importance": 0.8,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "PostgreSQL",
+        "relational database"
+      ],
+      "metadata": {
+        "category": "technology",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-go-backend": {
+      "memory_id": "memory-go-backend",
+      "content": "For backend development, I like working with Go.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:15:00",
+      "event_time": null,
+      "importance": 0.85,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "Go",
+        "backend development"
+      ],
+      "metadata": {
+        "category": "technology",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-yesterday-project": {
+      "memory_id": "memory-yesterday-project",
+      "content": "Yesterday I worked on my adaptive conversational memory project and implemented the retrieval evaluation tests.",
+      "memory_type": "episodic",
+      "created_at": "2026-08-19T10:00:00",
+      "event_time": "2026-08-18T18:00:00",
+      "importance": 0.8,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "adaptive conversational memory",
+        "retrieval evaluation"
+      ],
+      "metadata": {
+        "category": "project_activity",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-vector-memory": {
+      "memory_id": "memory-vector-memory",
+      "content": "I recently worked on vector memory retrieval using embeddings and a vector store.",
+      "memory_type": "episodic",
+      "created_at": "2026-08-18T10:00:00",
+      "event_time": "2026-08-17T15:00:00",
+      "importance": 0.75,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "vector memory",
+        "embeddings",
+        "vector store"
+      ],
+      "metadata": {
+        "category": "project_activity",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-conference": {
+      "memory_id": "memory-conference",
+      "content": "On August 15, I was working on the memory retrieval architecture.",
+      "memory_type": "episodic",
+      "created_at": "2026-08-15T11:00:00",
+      "event_time": "2026-08-15T10:00:00",
+      "importance": 0.75,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "memory retrieval architecture"
+      ],
+      "metadata": {
+        "category": "temporal_activity",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-internship-project": {
+      "memory_id": "memory-internship-project",
+      "content": "On August 17, I implemented the vector memory experiment.",
+      "memory_type": "episodic",
+      "created_at": "2026-08-17T17:00:00",
+      "event_time": "2026-08-17T16:00:00",
+      "importance": 0.8,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "vector memory"
+      ],
+      "metadata": {
+        "category": "temporal_activity",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-deployment-procedure": {
+      "memory_id": "memory-deployment-procedure",
+      "content": "When I want to run the project tests, I activate the virtual environment and run python -m pytest.",
+      "memory_type": "procedural",
+      "created_at": "2026-08-19T10:30:00",
+      "event_time": null,
+      "importance": 0.85,
+      "confidence": 1.0,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "pytest",
+        "virtual environment"
+      ],
+      "metadata": {
+        "category": "workflow",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-project-workflow": {
+      "memory_id": "memory-project-workflow",
+      "content": "For a new experiment, I create the experiment implementation, add its tests, run the experiment-specific tests, and finally run the complete pytest suite.",
+      "memory_type": "procedural",
+      "created_at": "2026-08-19T10:35:00",
+      "event_time": null,
+      "importance": 0.9,
+      "confidence": 1.0,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "experiment",
+        "pytest",
+        "tests"
+      ],
+      "metadata": {
+        "category": "workflow",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-environment-setup": {
+      "memory_id": "memory-environment-setup",
+      "content": "To evaluate the retrieval system, I first create the evaluation dataset, run the evaluation runner, and then inspect recall, precision, hit rate, reciprocal rank, and NDCG.",
+      "memory_type": "procedural",
+      "created_at": "2026-08-19T10:40:00",
+      "event_time": null,
+      "importance": 0.9,
+      "confidence": 1.0,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "evaluation dataset",
+        "evaluation runner",
+        "recall",
+        "precision",
+        "NDCG"
+      ],
+      "metadata": {
+        "category": "evaluation_workflow",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-old-language": {
+      "memory_id": "memory-old-language",
+      "content": "I used Python for my earlier projects.",
+      "memory_type": "semantic",
+      "created_at": "2026-07-01T10:00:00",
+      "event_time": "2026-07-01T10:00:00",
+      "importance": 0.7,
+      "confidence": 0.9,
+      "status": "archived",
+      "source": "seed",
+      "entities": [
+        "Python"
+      ],
+      "metadata": {
+        "category": "historical_preference",
+        "conflict_group": "language-preference",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-current-language": {
+      "memory_id": "memory-current-language",
+      "content": "I currently use Go for backend development.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T10:45:00",
+      "event_time": "2026-08-19T10:00:00",
+      "importance": 0.9,
+      "confidence": 0.98,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "Go",
+        "backend development"
+      ],
+      "metadata": {
+        "category": "current_preference",
+        "conflict_group": "language-preference",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-current-database": {
+      "memory_id": "memory-current-database",
+      "content": "I now prefer PostgreSQL for my current projects.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T11:00:00",
+      "event_time": "2026-08-19T11:00:00",
+      "importance": 0.9,
+      "confidence": 0.98,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "PostgreSQL"
+      ],
+      "metadata": {
+        "category": "current_preference",
+        "conflict_group": "database-preference",
+        "previous_value": "MongoDB",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-old-database": {
+      "memory_id": "memory-old-database",
+      "content": "I previously used MongoDB for my projects.",
+      "memory_type": "semantic",
+      "created_at": "2026-06-15T10:00:00",
+      "event_time": "2026-06-15T10:00:00",
+      "importance": 0.6,
+      "confidence": 0.9,
+      "status": "archived",
+      "source": "seed",
+      "entities": [
+        "MongoDB"
+      ],
+      "metadata": {
+        "category": "historical_preference",
+        "conflict_group": "database-preference",
+        "superseded_by": "memory-current-database",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    }
+  }
+}
