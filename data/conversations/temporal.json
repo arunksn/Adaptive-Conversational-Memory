@@ -1,0 +1,55 @@
+[
+    {
+      "conversation_id": "temporal-001",
+      "conversation": "On August 15, I was working on the memory retrieval architecture.",
+      "memory_type": "episodic",
+      "event_time": "2026-08-15T10:00:00",
+      "expected_memory": {
+        "importance": 0.75,
+        "confidence": 0.95,
+        "entities": [
+          "memory retrieval architecture"
+        ]
+      }
+    },
+    {
+      "conversation_id": "temporal-002",
+      "conversation": "On August 16, I worked on the adaptive retriever and conflict resolution logic.",
+      "memory_type": "episodic",
+      "event_time": "2026-08-16T14:00:00",
+      "expected_memory": {
+        "importance": 0.85,
+        "confidence": 0.95,
+        "entities": [
+          "adaptive retriever",
+          "conflict resolution"
+        ]
+      }
+    },
+    {
+      "conversation_id": "temporal-003",
+      "conversation": "On August 17, I implemented the vector memory experiment.",
+      "memory_type": "episodic",
+      "event_time": "2026-08-17T16:00:00",
+      "expected_memory": {
+        "importance": 0.8,
+        "confidence": 0.95,
+        "entities": [
+          "vector memory"
+        ]
+      }
+    },
+    {
+      "conversation_id": "temporal-004",
+      "conversation": "On August 18, I implemented the adaptive memory experiment.",
+      "memory_type": "episodic",
+      "event_time": "2026-08-18T17:00:00",
+      "expected_memory": {
+        "importance": 0.85,
+        "confidence": 0.95,
+        "entities": [
+          "adaptive memory"
+        ]
+      }
+    }
+  ]

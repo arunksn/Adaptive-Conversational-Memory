@@ -1,0 +1,45 @@
+[
+    {
+      "conversation_id": "episodic-001",
+      "conversation": "Yesterday I worked on my adaptive conversational memory project and implemented the retrieval evaluation tests.",
+      "memory_type": "episodic",
+      "event_time": "2026-08-18T18:00:00",
+      "expected_memory": {
+        "importance": 0.8,
+        "confidence": 0.95,
+        "entities": [
+          "adaptive conversational memory",
+          "retrieval evaluation"
+        ]
+      }
+    },
+    {
+      "conversation_id": "episodic-002",
+      "conversation": "Today I ran the complete test suite and all 479 tests passed.",
+      "memory_type": "episodic",
+      "event_time": "2026-08-19T18:00:00",
+      "expected_memory": {
+        "importance": 0.8,
+        "confidence": 1.0,
+        "entities": [
+          "pytest",
+          "test suite"
+        ]
+      }
+    },
+    {
+      "conversation_id": "episodic-003",
+      "conversation": "I recently worked on vector memory retrieval using embeddings and a vector store.",
+      "memory_type": "episodic",
+      "event_time": "2026-08-17T15:00:00",
+      "expected_memory": {
+        "importance": 0.75,
+        "confidence": 0.95,
+        "entities": [
+          "vector memory",
+          "embeddings",
+          "vector store"
+        ]
+      }
+    }
+  ]

@@ -1,0 +1,60 @@
+[
+    {
+      "conversation_id": "semantic-001",
+      "conversation": "I prefer Python for machine learning and data science projects.",
+      "memory_type": "semantic",
+      "expected_memory": {
+        "content": "I prefer Python for machine learning and data science projects.",
+        "importance": 0.9,
+        "confidence": 0.95,
+        "entities": [
+          "Python",
+          "machine learning",
+          "data science"
+        ]
+      }
+    },
+    {
+      "conversation_id": "semantic-002",
+      "conversation": "I usually use PostgreSQL when I need a relational database for my projects.",
+      "memory_type": "semantic",
+      "expected_memory": {
+        "content": "I usually use PostgreSQL when I need a relational database for my projects.",
+        "importance": 0.8,
+        "confidence": 0.95,
+        "entities": [
+          "PostgreSQL",
+          "relational database"
+        ]
+      }
+    },
+    {
+      "conversation_id": "semantic-003",
+      "conversation": "I am interested in artificial intelligence, machine learning, and backend development.",
+      "memory_type": "semantic",
+      "expected_memory": {
+        "content": "I am interested in artificial intelligence, machine learning, and backend development.",
+        "importance": 0.9,
+        "confidence": 0.95,
+        "entities": [
+          "artificial intelligence",
+          "machine learning",
+          "backend development"
+        ]
+      }
+    },
+    {
+      "conversation_id": "semantic-004",
+      "conversation": "For backend development, I like working with Go.",
+      "memory_type": "semantic",
+      "expected_memory": {
+        "content": "For backend development, I like working with Go.",
+        "importance": 0.85,
+        "confidence": 0.95,
+        "entities": [
+          "Go",
+          "backend development"
+        ]
+      }
+    }
+  ]

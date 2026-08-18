@@ -1,0 +1,45 @@
+[
+    {
+      "conversation_id": "procedural-001",
+      "conversation": "When I want to run the project tests, I activate the virtual environment and run python -m pytest.",
+      "memory_type": "procedural",
+      "expected_memory": {
+        "importance": 0.85,
+        "confidence": 1.0,
+        "entities": [
+          "pytest",
+          "virtual environment"
+        ]
+      }
+    },
+    {
+      "conversation_id": "procedural-002",
+      "conversation": "To evaluate the retrieval system, I first create the evaluation dataset, run the evaluation runner, and then inspect recall, precision, hit rate, reciprocal rank, and NDCG.",
+      "memory_type": "procedural",
+      "expected_memory": {
+        "importance": 0.9,
+        "confidence": 1.0,
+        "entities": [
+          "evaluation dataset",
+          "evaluation runner",
+          "recall",
+          "precision",
+          "NDCG"
+        ]
+      }
+    },
+    {
+      "conversation_id": "procedural-003",
+      "conversation": "For a new experiment, I create the experiment implementation, add its tests, run the experiment-specific tests, and finally run the complete pytest suite.",
+      "memory_type": "procedural",
+      "expected_memory": {
+        "importance": 0.9,
+        "confidence": 1.0,
+        "entities": [
+          "experiment",
+          "pytest",
+          "tests"
+        ]
+      }
+    }
+  ]

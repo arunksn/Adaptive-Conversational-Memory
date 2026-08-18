@@ -1,0 +1,57 @@
+[
+    {
+      "conversation_id": "conflict-001",
+      "conversation": "I used Python for my earlier projects.",
+      "memory_type": "semantic",
+      "event_time": "2026-07-01T10:00:00",
+      "expected_memory": {
+        "importance": 0.7,
+        "confidence": 0.9,
+        "entities": [
+          "Python"
+        ]
+      }
+    },
+    {
+      "conversation_id": "conflict-002",
+      "conversation": "I currently use Go for backend development.",
+      "memory_type": "semantic",
+      "event_time": "2026-08-19T10:00:00",
+      "expected_memory": {
+        "importance": 0.9,
+        "confidence": 0.98,
+        "entities": [
+          "Go",
+          "backend development"
+        ]
+      }
+    },
+    {
+      "conversation_id": "conflict-003",
+      "conversation": "I previously used MongoDB, but I now prefer PostgreSQL for my current projects.",
+      "memory_type": "semantic",
+      "event_time": "2026-08-19T11:00:00",
+      "expected_memory": {
+        "importance": 0.9,
+        "confidence": 0.98,
+        "entities": [
+          "MongoDB",
+          "PostgreSQL"
+        ]
+      }
+    },
+    {
+      "conversation_id": "conflict-004",
+      "conversation": "My older backend projects were mainly written in Python.",
+      "memory_type": "semantic",
+      "event_time": "2026-06-01T10:00:00",
+      "expected_memory": {
+        "importance": 0.6,
+        "confidence": 0.9,
+        "entities": [
+          "Python",
+          "backend"
+        ]
+      }
+    }
+  ]
