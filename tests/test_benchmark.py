@@ -64,6 +64,9 @@ class FakeRetriever:
         )
 
 
+# ORIGINAL TWO-SYSTEM TESTS
+
+
 def test_benchmark_initialization():
 
     baseline = FakeRetriever()
@@ -299,5 +302,259 @@ def test_compare_metrics_rejects_none():
     with pytest.raises(ValueError):
 
         MemoryBenchmark.compare_metrics(
+            None
+        )
+
+
+# MULTI-SYSTEM BENCHMARK TESTS
+
+
+def test_multi_system_initialization():
+
+    systems = {
+        "baseline_rag": FakeRetriever(),
+        "vector_memory": FakeRetriever(),
+        "vector_kg": FakeRetriever(),
+        "hybrid_memory": FakeRetriever(),
+        "adaptive_memory": FakeRetriever()
+    }
+
+    benchmark = MemoryBenchmark(
+        systems=systems
+    )
+
+    assert set(
+        benchmark.runners.keys()
+    ) == {
+        "baseline_rag",
+        "vector_memory",
+        "vector_kg",
+        "hybrid_memory",
+        "adaptive_memory"
+    }
+
+
+def test_multi_system_none_retriever_rejected():
+
+    systems = {
+        "baseline_rag": FakeRetriever(),
+        "vector_memory": None,
+        "vector_kg": FakeRetriever()
+    }
+
+    with pytest.raises(ValueError):
+
+        MemoryBenchmark(
+            systems=systems
+        )
+
+
+def test_multi_system_empty_rejected():
+
+    with pytest.raises(ValueError):
+
+        MemoryBenchmark(
+            systems={}
+        )
+
+
+def test_multi_system_invalid_dictionary_rejected():
+
+    with pytest.raises(ValueError):
+
+        MemoryBenchmark(
+            systems=[]
+        )
+
+
+def test_multi_system_benchmark_evaluates_all_systems():
+
+    systems = {
+        "baseline_rag": FakeRetriever([
+            FakeRetrievalResult(
+                "memory-other"
+            )
+        ]),
+        "vector_memory": FakeRetriever([
+            FakeRetrievalResult(
+                "memory-python"
+            )
+        ]),
+        "vector_kg": FakeRetriever([
+            FakeRetrievalResult(
+                "memory-python"
+            )
+        ]),
+        "hybrid_memory": FakeRetriever([
+            FakeRetrievalResult(
+                "memory-python"
+            )
+        ]),
+        "adaptive_memory": FakeRetriever([
+            FakeRetrievalResult(
+                "memory-python"
+            )
+        ])
+    }
+
+    benchmark = MemoryBenchmark(
+        systems=systems
+    )
+
+    dataset = EvaluationDataset([
+        EvaluationCase(
+            case_id="case-1",
+            query="What programming language do I prefer?",
+            relevant_memory_ids=[
+                "memory-python"
+            ]
+        )
+    ])
+
+    result = benchmark.run(
+        dataset,
+        k=1
+    )
+
+    assert isinstance(
+        result,
+        BenchmarkResult
+    )
+
+    assert set(
+        result.systems.keys()
+    ) == {
+        "baseline_rag",
+        "vector_memory",
+        "vector_kg",
+        "hybrid_memory",
+        "adaptive_memory"
+    }
+
+    assert (
+        result.systems[
+            "baseline_rag"
+        ].recall_at_k
+        == 0.0
+    )
+
+    assert (
+        result.systems[
+            "vector_memory"
+        ].recall_at_k
+        == 1.0
+    )
+
+    assert (
+        result.systems[
+            "vector_kg"
+        ].recall_at_k
+        == 1.0
+    )
+
+    assert (
+        result.systems[
+            "hybrid_memory"
+        ].recall_at_k
+        == 1.0
+    )
+
+    assert (
+        result.systems[
+            "adaptive_memory"
+        ].recall_at_k
+        == 1.0
+    )
+
+
+def test_multi_system_uses_same_dataset_and_k():
+
+    systems = {
+        "baseline_rag": FakeRetriever(),
+        "vector_memory": FakeRetriever(),
+        "vector_kg": FakeRetriever(),
+        "hybrid_memory": FakeRetriever(),
+        "adaptive_memory": FakeRetriever()
+    }
+
+    benchmark = MemoryBenchmark(
+        systems=systems
+    )
+
+    dataset = EvaluationDataset([
+        EvaluationCase(
+            case_id="case-1",
+            query="What do I prefer?",
+            relevant_memory_ids=[
+                "memory-1"
+            ]
+        )
+    ])
+
+    benchmark.run(
+        dataset,
+        k=3
+    )
+
+    for retriever in systems.values():
+
+        assert retriever.calls == [
+            (
+                "What do I prefer?",
+                3
+            )
+        ]
+
+
+def test_compare_systems():
+
+    systems = {
+        "baseline_rag": FakeRetriever(),
+        "vector_memory": FakeRetriever(),
+        "vector_kg": FakeRetriever(),
+        "hybrid_memory": FakeRetriever(),
+        "adaptive_memory": FakeRetriever()
+    }
+
+    benchmark = MemoryBenchmark(
+        systems=systems
+    )
+
+    dataset = EvaluationDataset()
+
+    result = benchmark.run(
+        dataset
+    )
+
+    comparison = (
+        MemoryBenchmark.compare_systems(
+            result
+        )
+    )
+
+    assert set(
+        comparison.keys()
+    ) == {
+        "baseline_rag",
+        "vector_memory",
+        "vector_kg",
+        "hybrid_memory",
+        "adaptive_memory"
+    }
+
+    for metrics in comparison.values():
+
+        assert "recall_at_k" in metrics
+        assert "precision_at_k" in metrics
+        assert "hit_at_k" in metrics
+        assert "reciprocal_rank" in metrics
+        assert "ndcg_at_k" in metrics
+
+
+def test_compare_systems_rejects_none():
+
+    with pytest.raises(ValueError):
+
+        MemoryBenchmark.compare_systems(
             None
         )
