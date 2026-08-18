@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 from src.evaluation.evaluation_dataset import (
     EvaluationCase,
-    EvaluationDataset
+    EvaluationDataset,
 )
 
 from src.evaluation.metrics import (
-    RetrievalMetricsCalculator
+    RetrievalMetricsCalculator,
 )
 
 
@@ -53,7 +53,7 @@ class EvaluationRunner:
     def __init__(
         self,
         retriever,
-        metrics_calculator=None
+        metrics_calculator=None,
     ):
         if retriever is None:
             raise ValueError(
@@ -73,7 +73,7 @@ class EvaluationRunner:
     def evaluate(
         self,
         dataset: EvaluationDataset,
-        k: int = 5
+        k: int = 5,
     ) -> RetrievalEvaluationSummary:
         """
         Evaluate all retrieval cases in a dataset.
@@ -100,7 +100,7 @@ class EvaluationRunner:
                 reciprocal_rank=0.0,
                 ndcg_at_k=0.0,
                 k=k,
-                case_count=0
+                case_count=0,
             )
 
         results = []
@@ -109,7 +109,7 @@ class EvaluationRunner:
 
             result = self.evaluate_case(
                 case=case,
-                k=k
+                k=k,
             )
 
             results.append(
@@ -118,15 +118,16 @@ class EvaluationRunner:
 
         return self._aggregate(
             results=results,
-            k=k
+            k=k,
         )
 
     # SINGLE CASE
 
+
     def evaluate_case(
         self,
         case: EvaluationCase,
-        k: int = 5
+        k: int = 5,
     ) -> RetrievalEvaluationResult:
         """
         Evaluate one retrieval case.
@@ -147,21 +148,23 @@ class EvaluationRunner:
 
         retrieval_result = self.retriever.retrieve(
             query=case.query,
-            top_k=k
+            top_k=k,
         )
 
-        # The retriever normally returns:
+        # Retrievers in the project may return:
         #
-        #     (route, retrieved_results)
+        #     (metadata, results)
         #
-        # Keep this defensive so the evaluation runner
-        # can also handle a retriever that directly returns
-        # the retrieved results.
+        # or directly:
+        #
+        #     results
+        #
+        # Keep the evaluation runner compatible with both.
 
         if (
             isinstance(
                 retrieval_result,
-                tuple
+                tuple,
             )
             and len(retrieval_result) == 2
         ):
@@ -169,8 +172,6 @@ class EvaluationRunner:
         else:
             retrieved = retrieval_result
 
-        # Evaluation at K must only consider the first K
-        # retrieved memories.
         retrieved_ids = (
             self._extract_memory_ids(
                 retrieved
@@ -183,7 +184,7 @@ class EvaluationRunner:
                 relevant_ids=list(
                     case.relevant_memory_ids
                 ),
-                k=k
+                k=k,
             )
         )
 
@@ -194,26 +195,28 @@ class EvaluationRunner:
             relevant_ids=list(
                 case.relevant_memory_ids
             ),
-            metrics=metrics
+            metrics=metrics,
         )
 
-    # MEMORY ID EXTRACTION
 
     @staticmethod
     def _extract_memory_ids(
-        results
+        results,
     ) -> list[str]:
         """
         Extract memory IDs from retrieval results.
 
-        The normal RetrievalResult stores the ID directly
-        in memory_id.
+        Supported result representations:
 
-        This method also supports results where the ID is
-        available from the underlying memory object.
+        1. result.memory_id
+        2. result.item.memory_id
+        3. result.metadata["memory_id"]
+        4. result["memory_id"]
+        5. result["item"]["memory_id"]
+        6. result["memory"]["memory_id"]
+        7. result["metadata"]["memory_id"]
 
-        Results without an identifiable memory ID are
-        ignored rather than causing evaluation to fail.
+        Results without an identifiable memory ID are ignored.
         """
 
         if results is None:
@@ -223,19 +226,36 @@ class EvaluationRunner:
 
         for result in results:
 
+            memory_id = None
+
+
+
             memory_id = getattr(
                 result,
                 "memory_id",
-                None
+                None,
             )
 
-            # Try the underlying memory object.
+
+            if (
+                memory_id is None
+                and isinstance(
+                    result,
+                    dict,
+                )
+            ):
+                memory_id = result.get(
+                    "memory_id"
+                )
+
+            # Object: result.item.memory_id
+
             if memory_id is None:
 
                 item = getattr(
                     result,
                     "item",
-                    None
+                    None,
                 )
 
                 if item is not None:
@@ -243,26 +263,139 @@ class EvaluationRunner:
                     memory_id = getattr(
                         item,
                         "memory_id",
-                        None
+                        None,
                     )
 
-            # Finally check metadata.
+                    # item may itself be a dictionary
+                    if (
+                        memory_id is None
+                        and isinstance(
+                            item,
+                            dict,
+                        )
+                    ):
+                        memory_id = item.get(
+                            "memory_id"
+                        )
+
+            # Dictionary: result["item"]
+
+            if (
+                memory_id is None
+                and isinstance(
+                    result,
+                    dict,
+                )
+            ):
+
+                item = result.get(
+                    "item"
+                )
+
+                if item is not None:
+
+                    if isinstance(
+                        item,
+                        dict,
+                    ):
+                        memory_id = item.get(
+                            "memory_id"
+                        )
+
+                    else:
+                        memory_id = getattr(
+                            item,
+                            "memory_id",
+                            None,
+                        )
+
+            # Object: result.metadata
+
             if memory_id is None:
 
                 metadata = getattr(
                     result,
                     "metadata",
-                    None
+                    None,
                 )
 
                 if isinstance(
                     metadata,
-                    dict
+                    dict,
                 ):
-
                     memory_id = metadata.get(
                         "memory_id"
                     )
+
+            # Dictionary: result["metadata"]
+           
+
+            if (
+                memory_id is None
+                and isinstance(
+                    result,
+                    dict,
+                )
+            ):
+
+                metadata = result.get(
+                    "metadata"
+                )
+
+                if isinstance(
+                    metadata,
+                    dict,
+                ):
+                    memory_id = metadata.get(
+                        "memory_id"
+                    )
+
+            # 
+            # Dictionary: result["memory"]
+            #
+            # This is the format returned by VectorStore:
+            #
+            # {
+            #     "memory_id": "...",
+            #     "score": ...,
+            #     "memory": {...}
+            # }
+            #
+            # The direct memory_id check above normally handles
+            # this, but this fallback supports cases where the
+            # ID exists only inside the serialized memory.
+            # 
+
+            if (
+                memory_id is None
+                and isinstance(
+                    result,
+                    dict,
+                )
+            ):
+
+                memory = result.get(
+                    "memory"
+                )
+
+                if memory is not None:
+
+                    if isinstance(
+                        memory,
+                        dict,
+                    ):
+                        memory_id = memory.get(
+                            "memory_id"
+                        )
+
+                    else:
+                        memory_id = getattr(
+                            memory,
+                            "memory_id",
+                            None,
+                        )
+
+            # Add identifiable ID
 
             if memory_id is not None:
 
@@ -272,12 +405,11 @@ class EvaluationRunner:
 
         return memory_ids
 
-    # AGGREGATION
 
     @staticmethod
     def _aggregate(
         results: list[RetrievalEvaluationResult],
-        k: int
+        k: int,
     ) -> RetrievalEvaluationSummary:
         """
         Aggregate metrics across all evaluated cases.
@@ -292,7 +424,7 @@ class EvaluationRunner:
                 reciprocal_rank=0.0,
                 ndcg_at_k=0.0,
                 k=k,
-                case_count=0
+                case_count=0,
             )
 
         recall = sum(
@@ -328,5 +460,5 @@ class EvaluationRunner:
             reciprocal_rank=reciprocal_rank,
             ndcg_at_k=ndcg,
             k=k,
-            case_count=len(results)
+            case_count=len(results),
         )
