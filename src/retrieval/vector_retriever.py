@@ -21,13 +21,15 @@ class VectorRetriever:
             storage_dir=storage_dir
         )
 
+    # ADD MEMORY
+
     def add_memory(
         self,
         memory: Memory
     ):
         """
         Convert memory text into an embedding
-        and store it in FAISS.
+        and store it in the vector store.
         """
 
         embedding = self.embedding_model.encode(
@@ -38,6 +40,8 @@ class VectorRetriever:
             memory,
             embedding
         )
+
+    # SEARCH
 
     def search(
         self,
@@ -50,8 +54,24 @@ class VectorRetriever:
         and retrieve semantically similar memories.
         """
 
+        if not isinstance(
+            query,
+            str
+        ) or not query.strip():
+
+            raise ValueError(
+                "query cannot be empty"
+            )
+
+        if top_k <= 0:
+            raise ValueError(
+                "top_k must be greater than 0"
+            )
+
         query_embedding = (
-            self.embedding_model.encode(query)
+            self.embedding_model.encode(
+                query
+            )
         )
 
         return self.vector_store.search(
@@ -59,6 +79,40 @@ class VectorRetriever:
             top_k=top_k,
             min_score=min_score
         )
+
+    # RETRIEVE
+    #
+    # Compatibility interface used by:
+    #
+    # EvaluationRunner
+    # BaselineRAG
+    # Benchmark
+    #
+    # The actual retrieval remains implemented
+    # by search().
+
+    def retrieve(
+        self,
+        query: str,
+        top_k: int = 5,
+        min_score: float | None = None
+    ):
+        """
+        Retrieve semantically similar memories.
+
+        This is the standard retrieval interface used
+        by the evaluation and benchmarking pipeline.
+
+        Internally delegates to search().
+        """
+
+        return self.search(
+            query=query,
+            top_k=top_k,
+            min_score=min_score
+        )
+
+    # UPDATE MEMORY
 
     def update_memory(
         self,
@@ -77,17 +131,21 @@ class VectorRetriever:
             embedding
         )
 
+    # DELETE MEMORY
+
     def delete_memory(
         self,
         memory_id: str
     ):
         """
-        Delete a memory.
+        Delete a memory from the vector store.
         """
 
         self.vector_store.delete(
             memory_id
         )
+
+    # SAVE
 
     def save(self):
         """
@@ -96,6 +154,8 @@ class VectorRetriever:
 
         self.vector_store.save()
 
+    # LOAD
+
     def load(self):
         """
         Load the persisted vector store.
@@ -103,5 +163,11 @@ class VectorRetriever:
 
         self.vector_store.load()
 
+    # COUNT
+
     def count(self) -> int:
+        """
+        Return the number of stored memories.
+        """
+
         return self.vector_store.count()
