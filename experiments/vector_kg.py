@@ -66,6 +66,8 @@ class VectorKG:
         self,
         query: str,
         k: int = 5,
+        procedure_id: str | None = None,
+        state_id: str | None = None,
     ) -> VectorKGRetrievalResult:
         """
         Retrieve memories using both vector and graph
@@ -93,6 +95,8 @@ class VectorKG:
         graph_results = self._graph_retrieve(
             query=query,
             k=k,
+            procedure_id=procedure_id,
+            state_id=state_id,
         )
 
         merged_results = self._merge_results(
@@ -100,9 +104,7 @@ class VectorKG:
             graph_results=graph_results,
         )
 
-        merged_results = merged_results[
-            :k
-        ]
+        merged_results = merged_results[:k]
 
         retrieved_ids = self._extract_memory_ids(
             merged_results
@@ -128,15 +130,43 @@ class VectorKG:
         """
         Execute vector retrieval.
 
-        The method supports the existing retriever
-        convention where retrieve() may return either
-        a result list or a tuple containing results.
+        Supports both:
+
+        - retrieve(query, top_k)
+        - search(query, top_k)
+
+        This keeps the experiment compatible with
+        test doubles while also supporting the real
+        VectorRetriever implementation.
         """
 
-        response = self.vector_retriever.retrieve(
-            query=query,
-            top_k=k,
-        )
+        if hasattr(
+            self.vector_retriever,
+            "retrieve"
+        ):
+            response = (
+                self.vector_retriever.retrieve(
+                    query=query,
+                    top_k=k,
+                )
+            )
+
+        elif hasattr(
+            self.vector_retriever,
+            "search"
+        ):
+            response = (
+                self.vector_retriever.search(
+                    query=query,
+                    top_k=k,
+                )
+            )
+
+        else:
+            raise AttributeError(
+                "vector_retriever must provide "
+                "retrieve() or search()"
+            )
 
         return self._normalize_retrieval_response(
             response
@@ -148,22 +178,64 @@ class VectorKG:
         self,
         query: str,
         k: int,
+        procedure_id: str | None = None,
+        state_id: str | None = None,
     ) -> list:
         """
         Execute knowledge graph retrieval.
 
-        The graph retriever is treated as a separate
-        retrieval source and its results are normalized
-        before merging.
+        Supports both:
+
+        - retrieve(query, top_k)
+        - get_next_states(procedure_id, state_id)
+
+        The generic retrieve() interface is preferred
+        when available.
         """
 
-        response = self.graph_retriever.retrieve(
-            query=query,
-            top_k=k,
-        )
+        if hasattr(
+            self.graph_retriever,
+            "retrieve"
+        ):
+            response = (
+                self.graph_retriever.retrieve(
+                    query=query,
+                    top_k=k,
+                )
+            )
 
-        return self._normalize_retrieval_response(
-            response
+            return (
+                self._normalize_retrieval_response(
+                    response
+                )
+            )
+
+        if (
+            procedure_id is None
+            or state_id is None
+        ):
+            return []
+
+        if hasattr(
+            self.graph_retriever,
+            "get_next_states"
+        ):
+            response = (
+                self.graph_retriever.get_next_states(
+                    procedure_id,
+                    state_id,
+                )
+            )
+
+            return (
+                self._normalize_retrieval_response(
+                    response
+                )
+            )
+
+        raise AttributeError(
+            "graph_retriever must provide "
+            "retrieve() or get_next_states()"
         )
 
     # RESPONSE NORMALIZATION
@@ -180,6 +252,7 @@ class VectorKG:
         - list
         - (metadata, results)
         - (results, metadata)
+        - None
 
         The actual result objects are preserved.
         """
@@ -397,6 +470,8 @@ class VectorKG:
         query: str,
         context_builder,
         k: int = 5,
+        procedure_id: str | None = None,
+        state_id: str | None = None,
     ):
         """
         Retrieve memories and construct LLM-ready
@@ -411,6 +486,8 @@ class VectorKG:
         retrieval = self.retrieve(
             query=query,
             k=k,
+            procedure_id=procedure_id,
+            state_id=state_id,
         )
 
         return context_builder.build(
@@ -425,6 +502,8 @@ class VectorKG:
         query: str,
         k: int = 5,
         context_builder=None,
+        procedure_id: str | None = None,
+        state_id: str | None = None,
     ):
         """
         Execute the complete Vector + Knowledge Graph
@@ -434,6 +513,8 @@ class VectorKG:
         retrieval = self.retrieve(
             query=query,
             k=k,
+            procedure_id=procedure_id,
+            state_id=state_id,
         )
 
         context = None
