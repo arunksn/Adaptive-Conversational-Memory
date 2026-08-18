@@ -4,6 +4,12 @@
     "memory-career-goal",
     "memory-postgresql",
     "memory-go-backend",
+    "memory-backend-development",
+    "memory-current-framework",
+    "memory-current-learning",
+    "memory-current-project",
+    "memory-technical-interests",
+    "memory-python-repeated",
     "memory-yesterday-project",
     "memory-vector-memory",
     "memory-conference",
@@ -98,6 +104,135 @@
       ],
       "metadata": {
         "category": "technology",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-backend-development": {
+      "memory_id": "memory-backend-development",
+      "content": "I am interested in backend development and building backend systems.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:20:00",
+      "event_time": null,
+      "importance": 0.85,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "backend development",
+        "backend systems"
+      ],
+      "metadata": {
+        "category": "interest",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-current-framework": {
+      "memory_id": "memory-current-framework",
+      "content": "I currently prefer using Gin when building backend APIs with Go.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:25:00",
+      "event_time": null,
+      "importance": 0.85,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "Go",
+        "Gin",
+        "backend APIs"
+      ],
+      "metadata": {
+        "category": "current_preference",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-current-learning": {
+      "memory_id": "memory-current-learning",
+      "content": "I am currently learning artificial intelligence and machine learning concepts.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:30:00",
+      "event_time": null,
+      "importance": 0.9,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "artificial intelligence",
+        "machine learning"
+      ],
+      "metadata": {
+        "category": "current_learning",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-current-project": {
+      "memory_id": "memory-current-project",
+      "content": "My current project focuses on adaptive conversational memory for conversational AI systems.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:35:00",
+      "event_time": null,
+      "importance": 0.9,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "adaptive conversational memory",
+        "conversational AI"
+      ],
+      "metadata": {
+        "category": "current_project",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-technical-interests": {
+      "memory_id": "memory-technical-interests",
+      "content": "My technical interests include artificial intelligence, machine learning, and backend development.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:40:00",
+      "event_time": null,
+      "importance": 0.9,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "artificial intelligence",
+        "machine learning",
+        "backend development"
+      ],
+      "metadata": {
+        "category": "technical_interests",
+        "seed": true
+      },
+      "access_count": 0,
+      "last_accessed": null
+    },
+    "memory-python-repeated": {
+      "memory_id": "memory-python-repeated",
+      "content": "I have used Python repeatedly across my machine learning and data science projects.",
+      "memory_type": "semantic",
+      "created_at": "2026-08-19T09:45:00",
+      "event_time": null,
+      "importance": 0.8,
+      "confidence": 0.95,
+      "status": "active",
+      "source": "seed",
+      "entities": [
+        "Python",
+        "machine learning",
+        "data science"
+      ],
+      "metadata": {
+        "category": "technology_usage",
         "seed": true
       },
       "access_count": 0,
