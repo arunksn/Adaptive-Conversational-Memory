@@ -1,0 +1,108 @@
+# Adaptive Conversational Memory
+# Global Project Configuration
+
+project:
+  name: "Adaptive Conversational Memory"
+  version: "1.0.0"
+
+
+memory:
+  default_importance: 0.5
+
+  importance:
+    minimum: 0.0
+    maximum: 1.0
+
+  retrieval:
+    top_k: 5
+    max_context_memories: 10
+
+  forgetting:
+    enabled: true
+
+  consolidation:
+    enabled: true
+
+  conflict_resolution:
+    enabled: true
+
+
+
+retrieval:
+  vector:
+    enabled: true
+
+  graph:
+    enabled: true
+
+  hybrid:
+    enabled: true
+
+  adaptive:
+    enabled: true
+
+  reranking:
+    enabled: true
+
+
+
+embeddings:
+  model: "all-MiniLM-L6-v2"
+  dimension: 384
+
+
+
+llm:
+  provider: "mock"
+
+  temperature: 0.0
+
+  max_tokens: 1024
+
+
+
+evaluation:
+  default_k: 5
+
+  metrics:
+    - recall_at_k
+    - precision_at_k
+    - hit_at_k
+    - reciprocal_rank
+    - ndcg_at_k
+
+  include_classification_metrics: true
+  include_qa_metrics: true
+
+
+
+benchmark:
+  enabled: true
+
+  systems:
+    - baseline_rag
+    - vector_memory
+    - vector_kg
+    - hybrid_memory
+    - adaptive_memory
+
+  output_directory: "data/evaluation/results"
+
+
+
+storage:
+  memories_directory: "data/memories"
+  conversations_directory: "data/conversations"
+  evaluation_directory: "data/evaluation"
+
+  vector_store: "data/memories/vector_store"
+  graph_store: "data/memories/graph_store"
+
+
+
+experiments:
+  random_seed: 42
+
+  save_results: true
+
+  verbose: true
