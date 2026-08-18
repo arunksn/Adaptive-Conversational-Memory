@@ -1,0 +1,164 @@
+[
+    {
+      "procedure_id": "procedure-project-evaluation",
+      "name": "Project Evaluation Workflow",
+      "description": "Workflow used to evaluate a retrieval experiment from implementation through final evaluation.",
+      "version": 1,
+      "states": [
+        {
+          "state_id": "state-project-start",
+          "name": "Project Started",
+          "description": "The experiment has been selected and work can begin.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-implementation",
+          "name": "Implementation",
+          "description": "Implement the experiment or retrieval system.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-tests",
+          "name": "Tests Written",
+          "description": "Unit tests have been created for the experiment.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-experiment-tests",
+          "name": "Experiment Tests Passed",
+          "description": "The experiment-specific test suite has passed.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-full-tests",
+          "name": "Full Test Suite Passed",
+          "description": "The complete project test suite has passed.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-evaluation",
+          "name": "Evaluation Complete",
+          "description": "Retrieval metrics have been calculated and inspected.",
+          "is_terminal": true
+        }
+      ],
+      "transitions": [
+        {
+          "transition_id": "transition-start-implementation",
+          "from_state": "state-project-start",
+          "to_state": "state-implementation",
+          "action": "Implement the experiment.",
+          "condition": "The experiment requirements are defined."
+        },
+        {
+          "transition_id": "transition-implementation-tests",
+          "from_state": "state-implementation",
+          "to_state": "state-tests",
+          "action": "Create tests for the experiment.",
+          "condition": "The experiment implementation is available."
+        },
+        {
+          "transition_id": "transition-tests-experiment",
+          "from_state": "state-tests",
+          "to_state": "state-experiment-tests",
+          "action": "Run the experiment-specific pytest suite.",
+          "condition": "All required tests have been written."
+        },
+        {
+          "transition_id": "transition-experiment-full",
+          "from_state": "state-experiment-tests",
+          "to_state": "state-full-tests",
+          "action": "Run the complete pytest suite.",
+          "condition": "Experiment-specific tests pass."
+        },
+        {
+          "transition_id": "transition-full-evaluation",
+          "from_state": "state-full-tests",
+          "to_state": "state-evaluation",
+          "action": "Run the evaluation and inspect retrieval metrics.",
+          "condition": "The complete test suite passes."
+        }
+      ]
+    },
+    {
+      "procedure_id": "procedure-memory-retrieval",
+      "name": "Adaptive Memory Retrieval Workflow",
+      "description": "Workflow representing the adaptive retrieval process from query routing to final memory selection.",
+      "version": 1,
+      "states": [
+        {
+          "state_id": "state-query-received",
+          "name": "Query Received",
+          "description": "A user query has entered the memory system.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-query-routed",
+          "name": "Query Routed",
+          "description": "The memory router has selected relevant memory sources.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-memory-retrieved",
+          "name": "Memory Retrieved",
+          "description": "Relevant memories have been retrieved from the selected sources.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-memory-fused",
+          "name": "Memories Fused",
+          "description": "Results from multiple retrieval sources have been combined.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-conflicts-resolved",
+          "name": "Conflicts Resolved",
+          "description": "Conflicting memories have been detected and resolved.",
+          "is_terminal": false
+        },
+        {
+          "state_id": "state-context-ready",
+          "name": "Context Ready",
+          "description": "The final memory set is ready to be converted into conversational context.",
+          "is_terminal": true
+        }
+      ],
+      "transitions": [
+        {
+          "transition_id": "transition-query-routing",
+          "from_state": "state-query-received",
+          "to_state": "state-query-routed",
+          "action": "Route the query.",
+          "condition": "A valid query is received."
+        },
+        {
+          "transition_id": "transition-routing-retrieval",
+          "from_state": "state-query-routed",
+          "to_state": "state-memory-retrieved",
+          "action": "Retrieve memories from the selected sources.",
+          "condition": "At least one retrieval route is selected."
+        },
+        {
+          "transition_id": "transition-retrieval-fusion",
+          "from_state": "state-memory-retrieved",
+          "to_state": "state-memory-fused",
+          "action": "Combine and rank retrieval results.",
+          "condition": "Retrieval results are available."
+        },
+        {
+          "transition_id": "transition-fusion-conflict",
+          "from_state": "state-memory-fused",
+          "to_state": "state-conflicts-resolved",
+          "action": "Detect and resolve conflicting memories.",
+          "condition": "Multiple memories may contain contradictory information."
+        },
+        {
+          "transition_id": "transition-conflict-context",
+          "from_state": "state-conflicts-resolved",
+          "to_state": "state-context-ready",
+          "action": "Prepare the final memory context.",
+          "condition": "The final retrieval set has been resolved."
+        }
+      ]
+    }
+  ]
