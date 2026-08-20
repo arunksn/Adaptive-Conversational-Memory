@@ -25,11 +25,13 @@ class RoutingResult:
 
 class MemoryRouter:
 
+  
 
     TEMPORAL_KEYWORDS = {
         "yesterday",
         "today",
         "tomorrow",
+        "last",
         "ago",
         "week",
         "weeks",
@@ -39,27 +41,15 @@ class MemoryRouter:
         "years",
         "date",
         "time",
+        "earlier",
+        "before",
+        "after",
+        "previous",
+        "history",
         "happened",
+        "told",
+        "said",
         "did",
-    }
-
-    # These indicate historical/current temporal state only
-    # when combined with an appropriate query.
-    #
-    # "previous programming language" should remain semantic,
-    # because it asks about a stored preference/fact rather
-    # than an event.
-
-    TEMPORAL_EVENT_KEYWORDS = {
-        "worked",
-        "work",
-        "attended",
-        "attend",
-        "implemented",
-        "did",
-        "happened",
-        "event",
-        "activity",
     }
 
 
@@ -96,6 +86,7 @@ class MemoryRouter:
         "running",
     }
 
+   
 
     SEMANTIC_KEYWORDS = {
         "prefer",
@@ -115,42 +106,63 @@ class MemoryRouter:
         "believe",
         "interest",
         "interests",
-        "learning",
-        "learn",
+        "goal",
+        "career",
+        "current",
+        "currently",
+        "latest",
         "technology",
         "technologies",
         "language",
         "database",
         "framework",
+        "learning",
+        "learn",
         "project",
         "development",
         "backend",
+    }
+
+    
+
+    CURRENT_SEMANTIC_PHRASES = {
+        "currently",
         "current",
         "latest",
-        "previous",
-        "previously",
-        "old",
-        "former",
-        "long-term",
+        "right now",
+        "at the moment",
+        "my current",
+        "my latest",
+        "currently using",
+        "currently prefer",
+        "currently learning",
+        "current project",
+        "current interests",
+        "current technical interests",
+        "current programming language",
+        "current database",
+        "latest preferred",
     }
 
 
-    TEMPORAL_PHRASES = (
+    EPISODIC_PHRASES = {
         "yesterday",
-        "today",
-        "tomorrow",
-        "last month",
         "last week",
+        "last month",
         "last year",
-        "recently",
         "a few days ago",
-        "earlier",
         "previous conversation",
         "previously",
-    )
+        "earlier",
+        "what did i",
+        "what happened",
+        "what was i doing",
+        "what have i done",
+    }
 
 
-    PROCEDURAL_PHRASES = (
+
+    PROCEDURAL_PHRASES = {
         "how do i",
         "how can i",
         "how to",
@@ -162,23 +174,29 @@ class MemoryRouter:
         "when deploying",
         "when installing",
         "when configuring",
-        "how do i deploy",
-        "how do i configure",
-        "how do i run",
-        "steps i use",
-    )
+    }
+
 
 
     def route(
         self,
-        query: str,
+        query: str
     ) -> RoutingResult:
         """
         Analyze a query and determine which memory
         source or sources should be used.
 
-        Routing is deterministic and based on explicit
-        lexical and phrase-level signals.
+        The router uses deterministic lexical signals.
+
+        Important routing behavior:
+
+        - Strong episodic queries are routed to episodic memory.
+        - Strong procedural queries are routed to procedural memory.
+        - Current/factual/preference queries favor semantic memory.
+        - Ambiguous queries may use multiple memory sources.
+        - Temporal words such as "recently" do not automatically
+          force episodic retrieval when the query asks for a
+          current semantic fact.
         """
 
         if not query or not query.strip():
@@ -186,7 +204,9 @@ class MemoryRouter:
                 "Query cannot be empty."
             )
 
-        normalized_query = query.lower().strip()
+        normalized_query = (
+            query.lower().strip()
+        )
 
         tokens = self._tokenize(
             query
@@ -198,160 +218,180 @@ class MemoryRouter:
             MemoryRoute.PROCEDURAL: 0,
         }
 
-
-        semantic_matches = (
-            tokens
-            & self.SEMANTIC_KEYWORDS
-        )
-
-        scores[
-            MemoryRoute.SEMANTIC
-        ] += len(
-            semantic_matches
-        )
-
-
-        procedural_matches = (
-            tokens
-            & self.PROCEDURAL_KEYWORDS
-        )
-
-        scores[
-            MemoryRoute.PROCEDURAL
-        ] += len(
-            procedural_matches
-        ) * 2
-
-        # Strong procedural phrases.
-        for phrase in self.PROCEDURAL_PHRASES:
-
-            if phrase in normalized_query:
-
-                scores[
-                    MemoryRoute.PROCEDURAL
-                ] += 4
-
+        
 
         temporal_matches = (
             tokens
             & self.TEMPORAL_KEYWORDS
         )
 
-        temporal_event_matches = (
+        procedural_matches = (
             tokens
-            & self.TEMPORAL_EVENT_KEYWORDS
+            & self.PROCEDURAL_KEYWORDS
         )
 
-        # Temporal words by themselves are not always enough.
-        #
-        # Example:
-        #
-        # "What was my previous programming language?"
-        #
-        # contains "previous", but this is a semantic
-        # historical preference, not an episodic event.
-
-        explicit_event_signal = (
-            bool(
-                temporal_event_matches
-            )
+        semantic_matches = (
+            tokens
+            & self.SEMANTIC_KEYWORDS
         )
 
-        explicit_temporal_signal = (
-            bool(
-                temporal_matches
-            )
+        # Temporal signals receive stronger weight because
+        # explicit temporal queries usually require episodic
+        # memory.
+        scores[
+            MemoryRoute.EPISODIC
+        ] += len(
+            temporal_matches
+        ) * 2
+
+        # Procedural signals.
+        scores[
+            MemoryRoute.PROCEDURAL
+        ] += len(
+            procedural_matches
+        ) * 2
+
+        # Semantic signals.
+        scores[
+            MemoryRoute.SEMANTIC
+        ] += len(
+            semantic_matches
         )
 
-        for phrase in self.TEMPORAL_PHRASES:
+     
+
+        episodic_phrase_matches = []
+
+        for phrase in self.EPISODIC_PHRASES:
 
             if phrase in normalized_query:
 
-                # "previously" and "earlier" are treated
-                # as temporal only when the query also
-                # contains an event/action signal.
-                if phrase in {
-                    "previously",
-                    "earlier",
-                }:
-                    if explicit_event_signal:
-                        scores[
-                            MemoryRoute.EPISODIC
-                        ] += 3
+                episodic_phrase_matches.append(
+                    phrase
+                )
 
-                else:
-                    scores[
-                        MemoryRoute.EPISODIC
-                    ] += 3
-
-        # Explicit event language strongly indicates episodic
-        # memory when accompanied by temporal context.
-
-        if (
-            explicit_temporal_signal
-            and explicit_event_signal
-        ):
-
-            scores[
-                MemoryRoute.EPISODIC
-            ] += len(
-                temporal_matches
-            ) * 2
-
-        # Direct event questions such as:
-        #
-        # "What did I work on yesterday?"
-        #
-        # should clearly prefer episodic memory.
-
-        if (
-            "what did i" in normalized_query
-            and explicit_temporal_signal
-        ):
-
-            scores[
-                MemoryRoute.EPISODIC
-            ] += 4
-
-        # SPECIAL CASES
-
-        # Historical/current facts and preferences should remain
-        # semantic even when words such as "previous", "current",
-        # "latest", or "last" appear.
-        #
-        # Examples:
-        #
-        # "What was my previous programming language?"
-        # "What is my latest preferred backend framework?"
-        # "What database do I currently prefer?"
-
-        historical_fact_phrases = (
-            "previous programming language",
-            "previous language",
-            "old programming language",
-            "former programming language",
-            "latest preferred",
-            "current preferred",
-            "currently prefer",
-            "currently using",
-            "currently use",
-            "current project",
-            "current learning",
-            "technical interests",
-        )
-
-        for phrase in historical_fact_phrases:
-
-            if phrase in normalized_query:
-
-                scores[
-                    MemoryRoute.SEMANTIC
-                ] += 5
-
-                # Prevent accidental episodic routing.
                 scores[
                     MemoryRoute.EPISODIC
-                ] = 0
+                ] += 3
+
+
+
+        procedural_phrase_matches = []
+
+        for phrase in self.PROCEDURAL_PHRASES:
+
+            if phrase in normalized_query:
+
+                procedural_phrase_matches.append(
+                    phrase
+                )
+
+                scores[
+                    MemoryRoute.PROCEDURAL
+                ] += 3
+
+
+        current_semantic_matches = []
+
+        for phrase in self.CURRENT_SEMANTIC_PHRASES:
+
+            if phrase in normalized_query:
+
+                current_semantic_matches.append(
+                    phrase
+                )
+
+                # Current facts/preferences are semantic
+                # memories even when the query contains a
+                # weak temporal word such as "recently".
+                scores[
+                    MemoryRoute.SEMANTIC
+                ] += 3
+
+       
+
+        # Example:
+        #
+        # "What have I been learning recently?"
+        #
+        # "recently" alone should not force episodic
+        # retrieval because the expected information may
+        # represent a current semantic fact.
+        #
+        # If the query contains "recently" together with
+        # semantic concepts such as learning, interests,
+        # technology, project, preference, or development,
+        # give semantic memory priority.
+
+        recent_semantic_terms = {
+            "learning",
+            "learn",
+            "interests",
+            "interest",
+            "technology",
+            "technologies",
+            "project",
+            "development",
+            "backend",
+            "preference",
+            "prefer",
+            "currently",
+            "current",
+        }
+
+        if (
+            "recently" in tokens
+            and tokens
+            & recent_semantic_terms
+        ):
+
+            scores[
+                MemoryRoute.SEMANTIC
+            ] += 4
+
+   
+
+        explicit_current_signal = (
+            bool(current_semantic_matches)
+            or bool(
+                tokens
+                & {
+                    "current",
+                    "currently",
+                    "latest",
+                }
+            )
+        )
+
+        if explicit_current_signal:
+
+            # Current semantic information should normally
+            # be retrieved from semantic memory.
+            scores[
+                MemoryRoute.SEMANTIC
+            ] += 2
+
+            # Weak temporal signals should not dominate a
+            # current-information query.
+            if (
+                not episodic_phrase_matches
+                and not (
+                    "yesterday" in tokens
+                    or "previous" in tokens
+                    or "previously" in tokens
+                )
+            ):
+
+                scores[
+                    MemoryRoute.EPISODIC
+                ] = min(
+                    scores[
+                        MemoryRoute.EPISODIC
+                    ],
+                    scores[
+                        MemoryRoute.SEMANTIC
+                    ] - 1
+                )
 
 
         max_score = max(
@@ -366,22 +406,18 @@ class MemoryRouter:
                 ],
                 confidence=0.5,
                 reason=(
-                    "No strong temporal, procedural, or "
-                    "semantic signal was detected; using "
-                    "semantic memory as the default route."
-                ),
+                    "No strong temporal or procedural "
+                    "signal was detected; using semantic "
+                    "memory as the default route."
+                )
             )
 
+  
 
         ranked_routes = sorted(
             scores.items(),
-            key=lambda item: (
-                item[1],
-                self._route_priority(
-                    item[0]
-                ),
-            ),
-            reverse=True,
+            key=lambda item: item[1],
+            reverse=True
         )
 
         primary_route = ranked_routes[0][0]
@@ -397,6 +433,18 @@ class MemoryRouter:
             second_route = ranked_routes[1][0]
             second_score = ranked_routes[1][1]
 
+            # Include a secondary source when its signal is
+            # meaningful and reasonably close to the primary
+            # signal.
+            #
+            # This supports mixed queries such as:
+            #
+            # "What did I previously do when deploying
+            #  my project?"
+            #
+            # which may benefit from both episodic and
+            # procedural memory.
+
             if (
                 second_score > 0
                 and second_score >= primary_score * 0.50
@@ -405,6 +453,8 @@ class MemoryRouter:
                 selected_routes.append(
                     second_route
                 )
+
+      
 
         confidence = min(
             1.0,
@@ -416,39 +466,22 @@ class MemoryRouter:
             procedural_matches=procedural_matches,
             semantic_matches=semantic_matches,
             selected_routes=selected_routes,
+            episodic_phrase_matches=episodic_phrase_matches,
+            procedural_phrase_matches=procedural_phrase_matches,
+            current_semantic_matches=current_semantic_matches,
         )
 
         return RoutingResult(
             routes=selected_routes,
             confidence=confidence,
-            reason=reason,
+            reason=reason
         )
 
-
-    @staticmethod
-    def _route_priority(
-        route: MemoryRoute,
-    ) -> int:
-        """
-        Deterministic tie-breaking priority.
-
-        Procedural > Episodic > Semantic
-        """
-
-        priorities = {
-            MemoryRoute.PROCEDURAL: 3,
-            MemoryRoute.EPISODIC: 2,
-            MemoryRoute.SEMANTIC: 1,
-        }
-
-        return priorities[
-            route
-        ]
 
 
     @staticmethod
     def _tokenize(
-        query: str,
+        query: str
     ) -> set[str]:
         """
         Convert query text into normalized tokens.
@@ -464,6 +497,7 @@ class MemoryRouter:
             .replace(";", " ")
             .replace("(", " ")
             .replace(")", " ")
+            .replace("-", " ")
         )
 
         return set(
@@ -477,6 +511,9 @@ class MemoryRouter:
         procedural_matches: set[str],
         semantic_matches: set[str],
         selected_routes: list[MemoryRoute],
+        episodic_phrase_matches: list[str] | None = None,
+        procedural_phrase_matches: list[str] | None = None,
+        current_semantic_matches: list[str] | None = None,
     ) -> str:
         """
         Build a human-readable explanation of the
@@ -496,6 +533,17 @@ class MemoryRouter:
                 )
             )
 
+        if episodic_phrase_matches:
+
+            reasons.append(
+                "episodic phrases: "
+                + ", ".join(
+                    sorted(
+                        episodic_phrase_matches
+                    )
+                )
+            )
+
         if procedural_matches:
 
             reasons.append(
@@ -503,6 +551,17 @@ class MemoryRouter:
                 + ", ".join(
                     sorted(
                         procedural_matches
+                    )
+                )
+            )
+
+        if procedural_phrase_matches:
+
+            reasons.append(
+                "procedural phrases: "
+                + ", ".join(
+                    sorted(
+                        procedural_phrase_matches
                     )
                 )
             )
@@ -518,6 +577,17 @@ class MemoryRouter:
                 )
             )
 
+        if current_semantic_matches:
+
+            reasons.append(
+                "current semantic signals: "
+                + ", ".join(
+                    sorted(
+                        current_semantic_matches
+                    )
+                )
+            )
+
         route_names = ", ".join(
             route.value
             for route in selected_routes
@@ -528,7 +598,9 @@ class MemoryRouter:
             return (
                 f"Selected {route_names} route(s) "
                 f"based on "
-                + "; ".join(reasons)
+                + "; ".join(
+                    reasons
+                )
                 + "."
             )
 
