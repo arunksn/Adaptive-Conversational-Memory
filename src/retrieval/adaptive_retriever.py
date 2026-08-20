@@ -47,6 +47,16 @@ class AdaptiveRetriever:
         preserving historical information.
         """
 
+        if router is None:
+            raise ValueError(
+                "router cannot be None"
+            )
+
+        if hybrid_retriever is None:
+            raise ValueError(
+                "hybrid_retriever cannot be None"
+            )
+
         self.router = router
         self.hybrid_retriever = hybrid_retriever
 
@@ -62,7 +72,9 @@ class AdaptiveRetriever:
             else ConflictResolver()
         )
 
+    # ========================================================
     # MAIN RETRIEVAL PIPELINE
+    # ========================================================
 
     def retrieve(
         self,
@@ -80,7 +92,29 @@ class AdaptiveRetriever:
         Route the query, retrieve memories, perform hybrid
         fusion, and resolve conflicts among the final
         Top-K memories.
+
+        Routing remains the primary decision mechanism.
+
+        Procedural queries additionally use semantic
+        retrieval when vector memory is available. This
+        allows procedural information stored as semantic
+        memories to participate in the final retrieval
+        result while preserving graph-based procedural
+        retrieval.
         """
+
+        if not isinstance(
+            query,
+            str
+        ) or not query.strip():
+            raise ValueError(
+                "Query cannot be empty."
+            )
+
+        if top_k <= 0:
+            raise ValueError(
+                "top_k must be greater than 0."
+            )
 
         routing_result = self.router.route(
             query
@@ -88,7 +122,9 @@ class AdaptiveRetriever:
 
         results = []
 
+        # ====================================================
         # SEMANTIC MEMORY
+        # ====================================================
 
         if (
             MemoryRoute.SEMANTIC
@@ -106,8 +142,69 @@ class AdaptiveRetriever:
                 semantic_results
             )
 
+        # ====================================================
+        # PROCEDURAL MEMORY
+        # ====================================================
+
+        if (
+            MemoryRoute.PROCEDURAL
+            in routing_result.routes
+        ):
+
+            # ------------------------------------------------
+            # Semantic fallback / supporting retrieval
+            #
+            # Procedural information may exist in vector
+            # memory even when the graph does not contain a
+            # directly matching state.
+            #
+            # This is especially important for queries such
+            # as:
+            #
+            #     "How do I deploy my application?"
+            #
+            # where the benchmark ground truth may refer to
+            # a semantic memory such as:
+            #
+            #     memory-deployment-procedure
+            # ------------------------------------------------
+
+            semantic_results = (
+                self.hybrid_retriever.retrieve_semantic(
+                    query=query,
+                    top_k=top_k
+                )
+            )
+
+            results.extend(
+                semantic_results
+            )
+
+            # ------------------------------------------------
+            # Graph-based procedural retrieval
+            #
+            # This is only available when the caller has
+            # supplied a known procedure and state.
+            #
+            # Without procedure/state context, the existing
+            # behavior is preserved and no graph result is
+            # fabricated.
+            # ------------------------------------------------
+
+            procedural_results = (
+                self._retrieve_procedural(
+                    procedure_id=procedure_id,
+                    state_id=state_id
+                )
+            )
+
+            results.extend(
+                procedural_results
+            )
+
+        # ====================================================
         # EPISODIC MEMORY
-      
+        # ====================================================
 
         if (
             MemoryRoute.EPISODIC
@@ -126,26 +223,9 @@ class AdaptiveRetriever:
                 temporal_results
             )
 
-        # PROCEDURAL MEMORY
-
-        if (
-            MemoryRoute.PROCEDURAL
-            in routing_result.routes
-        ):
-
-            procedural_results = (
-                self._retrieve_procedural(
-                    procedure_id=procedure_id,
-                    state_id=state_id
-                )
-            )
-
-            results.extend(
-                procedural_results
-            )
-
+        # ====================================================
         # HYBRID FUSION + TOP-K
-
+        # ====================================================
 
         fused_results = (
             self.hybrid_retriever.combine(
@@ -154,7 +234,9 @@ class AdaptiveRetriever:
             )
         )
 
+        # ====================================================
         # CONFLICT DETECTION + RESOLUTION
+        # ====================================================
 
         resolved_results = (
             self._resolve_conflicts(
@@ -167,6 +249,9 @@ class AdaptiveRetriever:
             resolved_results
         )
 
+    # ========================================================
+    # CONFLICT RESOLUTION
+    # ========================================================
 
     def _resolve_conflicts(
         self,
@@ -213,9 +298,9 @@ class AdaptiveRetriever:
                 resolution.historical
             )
 
-        
+            # ------------------------------------------------
             # Preserve historical information.
-
+            # ------------------------------------------------
 
             if historical is not None:
 
@@ -248,9 +333,10 @@ class AdaptiveRetriever:
                     historical.memory_id
                 )
 
+            # ------------------------------------------------
             # Store conflict information on the preferred
             # memory.
-        
+            # ------------------------------------------------
 
             preferred.metadata[
                 "conflict_resolved"
@@ -264,8 +350,10 @@ class AdaptiveRetriever:
                 "conflict_confidence"
             ] = resolution.confidence
 
+        # ----------------------------------------------------
         # Remove historical duplicates from the returned
         # Top-K result set.
+        # ----------------------------------------------------
 
         return [
             result
@@ -274,6 +362,9 @@ class AdaptiveRetriever:
             not in removed_ids
         ]
 
+    # ========================================================
+    # TEMPORAL / EPISODIC RETRIEVAL
+    # ========================================================
 
     def _retrieve_temporal(
         self,
@@ -296,6 +387,10 @@ class AdaptiveRetriever:
         if retriever is None:
             return []
 
+        # ----------------------------------------------------
+        # Explicit temporal range.
+        # ----------------------------------------------------
+
         if (
             start_time is not None
             and end_time is not None
@@ -308,8 +403,11 @@ class AdaptiveRetriever:
                 )
             )
 
-        # No temporal range has been extracted yet.
-        # Use recent episodic memories as a fallback.
+        # ----------------------------------------------------
+        # No temporal range was extracted.
+        #
+        # Use recent episodic memories as the fallback.
+        # ----------------------------------------------------
 
         memories = retriever.recent(
             limit=top_k
@@ -335,8 +433,9 @@ class AdaptiveRetriever:
 
         return results
 
+    # ========================================================
     # PROCEDURAL RETRIEVAL
-
+    # ========================================================
 
     def _retrieve_procedural(
         self,
@@ -348,7 +447,11 @@ class AdaptiveRetriever:
         procedure and current state.
 
         Natural-language procedure/state extraction
-        will be added later.
+        is intentionally not performed here.
+
+        If procedure/state context is unavailable, return
+        an empty list rather than inventing procedural
+        graph results.
         """
 
         if (
