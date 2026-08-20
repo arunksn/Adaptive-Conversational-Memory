@@ -31,9 +31,8 @@ class AdaptiveMemoryBenchmarkDataset:
 
         return EvaluationDataset([
 
-            # =================================================
             # SEMANTIC MEMORY
-            # =================================================
+            # resolved case 1 issue: memory retrieval should return the most relevant memory based on semantic similarity, not just the most recent one. 
 
             EvaluationCase(
                 case_id="semantic-preference-001",
@@ -68,9 +67,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-            # =================================================
-            # EPISODIC MEMORY
-            # =================================================
+         
 
             EvaluationCase(
                 case_id="episodic-event-001",
@@ -104,7 +101,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-            # =================================================
+        
             # PROCEDURAL MEMORY
             #
             # These are retained as memory-ID benchmark cases
@@ -112,7 +109,7 @@ class AdaptiveMemoryBenchmarkDataset:
             #
             # The actual procedure-graph behavior is evaluated
             # separately through procedural_cases().
-            # =================================================
+         
 
             EvaluationCase(
                 case_id="procedural-001",
@@ -154,9 +151,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 }
             ),
 
-            # =================================================
-            # TEMPORAL MEMORY
-            # =================================================
+            
 
             EvaluationCase(
                 case_id="temporal-001",
@@ -180,9 +175,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-            # =================================================
-            # CONFLICT / PREFERENCE CHANGE
-            # =================================================
+            
 
             EvaluationCase(
                 case_id="conflict-preference-001",
@@ -206,9 +199,6 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-            # =================================================
-            # CONSOLIDATION / REPEATED INFORMATION
-            # =================================================
 
             EvaluationCase(
                 case_id="consolidation-001",
@@ -232,9 +222,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-            # =================================================
-            # NOISE
-            # =================================================
+            
 
             EvaluationCase(
                 case_id="noise-001",
@@ -257,9 +245,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-            # =================================================
-            # MIXED MEMORY
-            # =================================================
+           
 
             EvaluationCase(
                 case_id="mixed-001",
@@ -295,9 +281,6 @@ class AdaptiveMemoryBenchmarkDataset:
             ),
         ])
 
-    # =========================================================
-    # MAIN RETRIEVAL BENCHMARK
-    # =========================================================
 
     @classmethod
     def retrieval_cases(
@@ -311,9 +294,6 @@ class AdaptiveMemoryBenchmarkDataset:
 
         return cls.build().memory_retrieval_cases()
 
-    # =========================================================
-    # PROCEDURAL GRAPH BENCHMARK
-    # =========================================================
 
     @staticmethod
     def procedural_cases() -> EvaluationDataset:
@@ -389,9 +369,7 @@ class AdaptiveMemoryBenchmarkDataset:
             ),
         ])
 
-    # =========================================================
-    # PROCEDURAL RETRIEVAL CASES
-    # =========================================================
+   
 
     @classmethod
     def procedural_retrieval_cases(
