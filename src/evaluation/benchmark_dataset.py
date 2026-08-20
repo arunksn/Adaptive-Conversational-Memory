@@ -9,31 +9,23 @@ class AdaptiveMemoryBenchmarkDataset:
     Deterministic benchmark dataset for evaluating
     conversational memory retrieval.
 
-    The dataset covers:
+    The main benchmark contains exactly 20 memory-ID
+    retrieval cases.
 
-    - semantic memories
-    - episodic memories
-    - procedural memories
-    - temporal information
-    - preference changes
-    - repeated information
-    - conflicting information
-    - irrelevant memories
+    Procedural graph evaluation is maintained separately
+    because graph retrieval uses procedure/state IDs
+    rather than memory IDs.
     """
 
     @staticmethod
     def build() -> EvaluationDataset:
         """
-        Build the complete memory retrieval benchmark dataset.
-
-        These cases evaluate memory-ID retrieval and are
-        intentionally kept separate from procedural graph
-        evaluation.
+        Build the main 20-case memory retrieval benchmark.
         """
 
         return EvaluationDataset([
 
-         
+            
 
             EvaluationCase(
                 case_id="semantic-preference-001",
@@ -102,6 +94,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
+        
 
             EvaluationCase(
                 case_id="procedural-001",
@@ -127,14 +120,15 @@ class AdaptiveMemoryBenchmarkDataset:
             EvaluationCase(
                 case_id="procedural-003",
                 query=(
-                    "How do I configure the "
-                    "development environment?"
+                    "How do I evaluate the "
+                    "retrieval system?"
                 ),
                 relevant_memory_ids=[
                     "memory-environment-setup"
                 ]
             ),
 
+           
 
             EvaluationCase(
                 case_id="temporal-001",
@@ -173,8 +167,9 @@ class AdaptiveMemoryBenchmarkDataset:
             EvaluationCase(
                 case_id="conflict-preference-002",
                 query=(
-                    "What is my latest preferred "
-                    "backend framework?"
+                    "Which framework do I currently "
+                    "prefer for building backend APIs "
+                    "with Go?"
                 ),
                 relevant_memory_ids=[
                     "memory-current-framework"
@@ -187,7 +182,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 case_id="consolidation-001",
                 query=(
                     "What type of development "
-                    "do I frequently work on?"
+                    "am I interested in?"
                 ),
                 relevant_memory_ids=[
                     "memory-backend-development"
@@ -205,7 +200,7 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-        
+           
 
             EvaluationCase(
                 case_id="noise-001",
@@ -244,8 +239,7 @@ class AdaptiveMemoryBenchmarkDataset:
             EvaluationCase(
                 case_id="mixed-002",
                 query=(
-                    "What technology is part of "
-                    "my current project?"
+                    "What is my current project about?"
                 ),
                 relevant_memory_ids=[
                     "memory-current-project"
@@ -264,28 +258,44 @@ class AdaptiveMemoryBenchmarkDataset:
             )
         ])
 
+    @classmethod
+    def retrieval_cases(cls):
+        """
+        Return the 20 main memory retrieval cases.
+        """
+
+        return cls.build().retrieval_cases()
 
     @classmethod
-    def procedural_cases(
-        cls
-    ) -> EvaluationDataset:
+    def memory_cases(cls):
         """
-        Build deterministic procedural-retrieval cases.
+        Return the main memory retrieval cases.
+        """
 
-        Procedural retrieval is evaluated separately from
-        ordinary memory retrieval because procedural results
-        come from the procedure/state graph rather than
-        vector memories.
+        return cls.build().memory_retrieval_cases()
+
+
+    @staticmethod
+    def build_procedural_cases() -> EvaluationDataset:
+        """
+        Build the separate procedural graph benchmark.
+
+        These cases are intentionally NOT included in build()
+        because the main benchmark evaluates memory IDs.
+
+        Procedural graph evaluation instead evaluates:
+            - procedure_id
+            - current state
+            - expected next state
         """
 
         return EvaluationDataset([
 
-
             EvaluationCase(
                 case_id="procedural-graph-001",
                 query=(
-                    "What should I do after starting "
-                    "the project evaluation?"
+                    "What should I do after "
+                    "starting the project evaluation?"
                 ),
                 relevant_procedure_ids=[
                     "procedure-project-evaluation"
@@ -293,15 +303,13 @@ class AdaptiveMemoryBenchmarkDataset:
                 relevant_state_ids=[
                     "state-implementation"
                 ],
-                procedure_id=(
-                    "procedure-project-evaluation"
-                ),
-                state_id=(
-                    "state-project-start"
-                ),
+                metadata={
+                    "evaluation_type": "procedural_graph",
+                    "current_state_id": (
+                        "state-project-start"
+                    )
+                }
             ),
-
-         
 
             EvaluationCase(
                 case_id="procedural-graph-002",
@@ -315,21 +323,19 @@ class AdaptiveMemoryBenchmarkDataset:
                 relevant_state_ids=[
                     "state-tests"
                 ],
-                procedure_id=(
-                    "procedure-project-evaluation"
-                ),
-                state_id=(
-                    "state-implementation"
-                ),
+                metadata={
+                    "evaluation_type": "procedural_graph",
+                    "current_state_id": (
+                        "state-implementation"
+                    )
+                }
             ),
-
-         
 
             EvaluationCase(
                 case_id="procedural-graph-003",
                 query=(
-                    "What happens after the experiment "
-                    "tests pass?"
+                    "What happens after the "
+                    "experiment tests pass?"
                 ),
                 relevant_procedure_ids=[
                     "procedure-project-evaluation"
@@ -337,28 +343,30 @@ class AdaptiveMemoryBenchmarkDataset:
                 relevant_state_ids=[
                     "state-full-tests"
                 ],
-                procedure_id=(
-                    "procedure-project-evaluation"
-                ),
-                state_id=(
-                    "state-experiment-tests"
-                ),
-            ),
+                metadata={
+                    "evaluation_type": "procedural_graph",
+                    "current_state_id": (
+                        "state-experiment-tests"
+                    )
+                }
+            )
         ])
 
-  
+    @classmethod
+    def procedural_cases(cls):
+        """
+        Return the separate procedural graph dataset.
+        """
+
+        return cls.build_procedural_cases()
 
     @classmethod
-    def retrieval_cases(
-        cls
-    ) -> list[EvaluationCase]:
+    def procedural_retrieval_cases(cls):
         """
-        Return the existing memory retrieval benchmark cases.
-
-        Procedural graph cases are intentionally excluded.
+        Return procedural graph cases.
         """
 
         return (
-            cls.build()
-            .retrieval_cases()
+            cls.build_procedural_cases()
+            .procedural_retrieval_cases()
         )
