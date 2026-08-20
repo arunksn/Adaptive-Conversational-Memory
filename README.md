@@ -1,4 +1,4 @@
-# 🧠 Adaptive Conversational Memory
+# ⛓️ Adaptive Conversational Memory
 
 > **An adaptive memory architecture for conversational AI that goes beyond traditional semantic retrieval by combining semantic, episodic, procedural, and temporal memory with hybrid retrieval, adaptive reranking, conflict resolution, consolidation, lifecycle management, and controlled forgetting.**
 
