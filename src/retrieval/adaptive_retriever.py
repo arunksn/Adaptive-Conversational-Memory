@@ -13,6 +13,10 @@ from src.retrieval.hybrid_retriever import (
     RetrievalResult
 )
 
+from src.retrieval.reranker import (
+    MemoryReranker
+)
+
 from src.routing.memory_router import (
     MemoryRoute,
     MemoryRouter,
@@ -27,20 +31,29 @@ class AdaptiveRetriever:
         router: MemoryRouter,
         hybrid_retriever: HybridRetriever,
         conflict_detector: ConflictDetector | None = None,
-        conflict_resolver: ConflictResolver | None = None
+        conflict_resolver: ConflictResolver | None = None,
+        reranker: MemoryReranker | None = None
     ):
         """
-        Orchestrates routing, retrieval, hybrid fusion,
-        and conflict handling.
+        Orchestrates:
+
+            1. Query routing
+            2. Memory retrieval
+            3. Candidate fusion
+            4. Deterministic re-ranking
+            5. Conflict detection
+            6. Conflict resolution
 
         MemoryRouter decides which memory sources are
         relevant.
 
-        HybridRetriever executes and combines the
-        resulting memories.
+        HybridRetriever retrieves and fuses candidates.
 
-        ConflictDetector identifies contradictory
-        memories.
+        MemoryReranker performs the final relevance-aware
+        ranking using retrieval score, query relevance,
+        importance, recency, and source priority.
+
+        ConflictDetector identifies contradictory memories.
 
         ConflictResolver determines which memory should
         be treated as the preferred/current memory while
@@ -72,7 +85,13 @@ class AdaptiveRetriever:
             else ConflictResolver()
         )
 
+        self.reranker = (
+            reranker
+            if reranker is not None
+            else MemoryReranker()
+        )
 
+   
 
     def retrieve(
         self,
@@ -88,27 +107,31 @@ class AdaptiveRetriever:
     ]:
         """
         Route the query, retrieve memories from the
-        selected memory sources, perform hybrid fusion,
-        and resolve conflicts.
+        selected memory sources, perform candidate fusion,
+        re-rank the expanded candidate pool, and resolve
+        conflicts.
 
-        Routing is the primary decision mechanism.
+        The final top_k is selected AFTER re-ranking.
 
         SEMANTIC:
-            Vector retrieval only.
+            Retrieve a large candidate pool from the
+            vector store.
 
         EPISODIC:
-            Temporal retrieval only.
+            Retrieve temporal/episodic memories.
 
         PROCEDURAL:
-            Graph retrieval only when procedure/state
-            context is available.
+
+            When procedure/state context is available:
+                Use procedure graph retrieval.
+
+            When procedure/state context is unavailable:
+                Retrieve procedural memories from the
+                procedural-memory vector store.
 
         Multiple routes:
-            Retrieval is performed independently for
-            each selected route and then fused.
-
-        No procedural context:
-            No procedural result is fabricated.
+            Retrieval is performed independently for each
+            selected route and then fused.
         """
 
         if not isinstance(
@@ -125,15 +148,38 @@ class AdaptiveRetriever:
                 "top_k must be greater than 0."
             )
 
- 
-
+   
         routing_result = self.router.route(
             query
         )
 
         results = []
 
+      
+        # CANDIDATE POOL SIZE
+     
+        #
+        # We deliberately retrieve more candidates than the
+        # requested final top_k.
+        #
+        # This prevents embedding noise from eliminating a
+        # relevant memory before the reranker gets a chance
+        # to evaluate it.
+        #
+        # Example:
+        #
+        #     final top_k = 5
+        #     candidate pool = 20
+        #
+        # The reranker sees all 20 and then selects 5.
+        
        
+
+        candidate_k = max(
+            top_k * 4,
+            20
+        )
+
 
         if (
             MemoryRoute.SEMANTIC
@@ -143,7 +189,7 @@ class AdaptiveRetriever:
             semantic_results = (
                 self.hybrid_retriever.retrieve_semantic(
                     query=query,
-                    top_k=top_k
+                    top_k=candidate_k
                 )
             )
 
@@ -151,6 +197,7 @@ class AdaptiveRetriever:
                 semantic_results
             )
 
+      
 
         if (
             MemoryRoute.EPISODIC
@@ -176,18 +223,52 @@ class AdaptiveRetriever:
             in routing_result.routes
         ):
 
-            procedural_results = (
-                self._retrieve_procedural(
-                    procedure_id=procedure_id,
-                    state_id=state_id
+        
+            # CASE 1:
+            #
+            # Explicit procedure/state context exists.
+            #
+            # The procedure graph is authoritative.
+            
+
+            if (
+                procedure_id is not None
+                and state_id is not None
+            ):
+
+                procedural_results = (
+                    self._retrieve_procedural(
+                        procedure_id=procedure_id,
+                        state_id=state_id
+                    )
                 )
-            )
 
-            results.extend(
-                procedural_results
-            )
+                results.extend(
+                    procedural_results
+                )
 
-    
+            # CASE 2:
+            #
+            # No graph context exists.
+            #
+            # Retrieve procedural memories from the
+            # procedural-memory vector store.
+          
+
+            else:
+
+                procedural_memory_results = (
+                    self.hybrid_retriever
+                    .retrieve_procedural_memory(
+                        query=query,
+                        top_k=candidate_k
+                    )
+                )
+
+                results.extend(
+                    procedural_memory_results
+                )
+
 
         if not results:
             return (
@@ -195,18 +276,55 @@ class AdaptiveRetriever:
                 []
             )
 
+
+        # CANDIDATE FUSION
+       
+        #
+        # IMPORTANT:
+        #
+        # Do NOT use the final top_k here.
+        #
+        # We want to preserve a large candidate pool for
+        # the reranker.
+    
         fused_results = (
             self.hybrid_retriever.combine(
                 results,
-                top_k=top_k
+                top_k=candidate_k
             )
         )
 
-    
+      
+        # ADAPTIVE RE-RANKING
+     
+        #
+        # The reranker now receives the expanded candidate
+        # pool.
+        #
+        # It considers:
+        #
+        #   - retrieval similarity
+        #   - lexical query relevance
+        #   - memory importance
+        #   - memory recency
+        #   - source priority
+        #
+        # Only AFTER this step do we select final top_k.
+      
+
+        reranked_results = (
+            self.reranker.rerank(
+                results=fused_results,
+                top_k=top_k,
+                query=query
+            )
+        )
+
+  
 
         resolved_results = (
             self._resolve_conflicts(
-                fused_results
+                reranked_results
             )
         )
 
@@ -222,7 +340,7 @@ class AdaptiveRetriever:
     ) -> list[RetrievalResult]:
         """
         Detect and resolve conflicts among the final
-        Top-K memories.
+        top-k memories.
 
         The preferred memory remains in the returned
         result set.
@@ -261,6 +379,7 @@ class AdaptiveRetriever:
                 resolution.historical
             )
 
+           
 
             if historical is not None:
 
@@ -316,6 +435,7 @@ class AdaptiveRetriever:
             not in removed_ids
         ]
 
+ 
 
     def _retrieve_temporal(
         self,
@@ -340,7 +460,7 @@ class AdaptiveRetriever:
         if retriever is None:
             return []
 
-  
+       
 
         if (
             start_time is not None
@@ -354,7 +474,7 @@ class AdaptiveRetriever:
                 )
             )
 
-      
+       
 
         memories = retriever.recent(
             limit=top_k
@@ -380,6 +500,7 @@ class AdaptiveRetriever:
 
         return results
 
+   
 
     def _retrieve_procedural(
         self,

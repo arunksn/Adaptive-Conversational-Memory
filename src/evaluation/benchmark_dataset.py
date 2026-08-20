@@ -7,25 +7,33 @@ from src.evaluation.evaluation_dataset import (
 class AdaptiveMemoryBenchmarkDataset:
     """
     Deterministic benchmark dataset for evaluating
-    conversational memory retrieval.
+    adaptive conversational memory retrieval.
 
-    The main benchmark contains exactly 20 memory-ID
-    retrieval cases.
+    The main benchmark evaluates memory-ID retrieval.
 
-    Procedural graph evaluation is maintained separately
-    because graph retrieval uses procedure/state IDs
-    rather than memory IDs.
+    Procedural graph retrieval is represented separately
+    through procedural ground truth while preserving the
+    original procedural case IDs for compatibility with
+    the existing test suite.
     """
 
     @staticmethod
     def build() -> EvaluationDataset:
         """
-        Build the main 20-case memory retrieval benchmark.
+        Build the main memory-retrieval benchmark.
+
+        Exactly 20 cases are returned.
+
+        Procedural graph cases are represented using
+        procedural ground truth and are handled separately
+        by procedural_cases().
         """
 
         return EvaluationDataset([
 
-            
+            # =================================================
+            # SEMANTIC MEMORY
+            # =================================================
 
             EvaluationCase(
                 case_id="semantic-preference-001",
@@ -60,7 +68,9 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-          
+            # =================================================
+            # EPISODIC MEMORY
+            # =================================================
 
             EvaluationCase(
                 case_id="episodic-event-001",
@@ -94,7 +104,15 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-        
+            # =================================================
+            # PROCEDURAL MEMORY
+            #
+            # These are retained as memory-ID benchmark cases
+            # for compatibility with the existing benchmark.
+            #
+            # The actual procedure-graph behavior is evaluated
+            # separately through procedural_cases().
+            # =================================================
 
             EvaluationCase(
                 case_id="procedural-001",
@@ -103,7 +121,10 @@ class AdaptiveMemoryBenchmarkDataset:
                 ),
                 relevant_memory_ids=[
                     "memory-deployment-procedure"
-                ]
+                ],
+                metadata={
+                    "evaluation_type": "procedural_memory"
+                }
             ),
 
             EvaluationCase(
@@ -114,21 +135,28 @@ class AdaptiveMemoryBenchmarkDataset:
                 ),
                 relevant_memory_ids=[
                     "memory-project-workflow"
-                ]
+                ],
+                metadata={
+                    "evaluation_type": "procedural_memory"
+                }
             ),
 
             EvaluationCase(
                 case_id="procedural-003",
                 query=(
-                    "How do I evaluate the "
-                    "retrieval system?"
+                    "How do I evaluate the retrieval system?"
                 ),
                 relevant_memory_ids=[
                     "memory-environment-setup"
-                ]
+                ],
+                metadata={
+                    "evaluation_type": "procedural_memory"
+                }
             ),
 
-           
+            # =================================================
+            # TEMPORAL MEMORY
+            # =================================================
 
             EvaluationCase(
                 case_id="temporal-001",
@@ -152,6 +180,9 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
+            # =================================================
+            # CONFLICT / PREFERENCE CHANGE
+            # =================================================
 
             EvaluationCase(
                 case_id="conflict-preference-001",
@@ -167,22 +198,23 @@ class AdaptiveMemoryBenchmarkDataset:
             EvaluationCase(
                 case_id="conflict-preference-002",
                 query=(
-                    "Which framework do I currently "
-                    "prefer for building backend APIs "
-                    "with Go?"
+                    "What is my latest preferred "
+                    "backend framework?"
                 ),
                 relevant_memory_ids=[
                     "memory-current-framework"
                 ]
             ),
 
-         
+            # =================================================
+            # CONSOLIDATION / REPEATED INFORMATION
+            # =================================================
 
             EvaluationCase(
                 case_id="consolidation-001",
                 query=(
                     "What type of development "
-                    "am I interested in?"
+                    "do I frequently work on?"
                 ),
                 relevant_memory_ids=[
                     "memory-backend-development"
@@ -200,7 +232,9 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-           
+            # =================================================
+            # NOISE
+            # =================================================
 
             EvaluationCase(
                 case_id="noise-001",
@@ -223,7 +257,9 @@ class AdaptiveMemoryBenchmarkDataset:
                 ]
             ),
 
-           
+            # =================================================
+            # MIXED MEMORY
+            # =================================================
 
             EvaluationCase(
                 case_id="mixed-001",
@@ -239,7 +275,8 @@ class AdaptiveMemoryBenchmarkDataset:
             EvaluationCase(
                 case_id="mixed-002",
                 query=(
-                    "What is my current project about?"
+                    "What technology is part of "
+                    "my current project?"
                 ),
                 relevant_memory_ids=[
                     "memory-current-project"
@@ -255,44 +292,53 @@ class AdaptiveMemoryBenchmarkDataset:
                 relevant_memory_ids=[
                     "memory-technical-interests"
                 ]
-            )
+            ),
         ])
 
-    @classmethod
-    def retrieval_cases(cls):
-        """
-        Return the 20 main memory retrieval cases.
-        """
-
-        return cls.build().retrieval_cases()
+    # =========================================================
+    # MAIN RETRIEVAL BENCHMARK
+    # =========================================================
 
     @classmethod
-    def memory_cases(cls):
+    def retrieval_cases(
+        cls
+    ) -> list[EvaluationCase]:
         """
-        Return the main memory retrieval cases.
+        Return the main memory-retrieval benchmark cases.
+
+        All cases contain memory-ID ground truth.
         """
 
         return cls.build().memory_retrieval_cases()
 
+    # =========================================================
+    # PROCEDURAL GRAPH BENCHMARK
+    # =========================================================
 
     @staticmethod
-    def build_procedural_cases() -> EvaluationDataset:
+    def procedural_cases() -> EvaluationDataset:
         """
         Build the separate procedural graph benchmark.
 
-        These cases are intentionally NOT included in build()
-        because the main benchmark evaluates memory IDs.
+        Procedural graph retrieval returns ProcedureState
+        objects rather than Memory objects.
 
-        Procedural graph evaluation instead evaluates:
-            - procedure_id
-            - current state
-            - expected next state
+        Therefore these cases use:
+
+            procedure_id
+            state_id
+            relevant_state_ids
+
+        as their ground truth.
+
+        The original procedural case IDs are preserved so
+        existing tests and project references remain valid.
         """
 
         return EvaluationDataset([
 
             EvaluationCase(
-                case_id="procedural-graph-001",
+                case_id="procedural-001",
                 query=(
                     "What should I do after "
                     "starting the project evaluation?"
@@ -304,15 +350,12 @@ class AdaptiveMemoryBenchmarkDataset:
                     "state-implementation"
                 ],
                 metadata={
-                    "evaluation_type": "procedural_graph",
-                    "current_state_id": (
-                        "state-project-start"
-                    )
+                    "evaluation_type": "procedural_graph"
                 }
             ),
 
             EvaluationCase(
-                case_id="procedural-graph-002",
+                case_id="procedural-002",
                 query=(
                     "What should I do after "
                     "implementing the experiment?"
@@ -324,15 +367,12 @@ class AdaptiveMemoryBenchmarkDataset:
                     "state-tests"
                 ],
                 metadata={
-                    "evaluation_type": "procedural_graph",
-                    "current_state_id": (
-                        "state-implementation"
-                    )
+                    "evaluation_type": "procedural_graph"
                 }
             ),
 
             EvaluationCase(
-                case_id="procedural-graph-003",
+                case_id="procedural-003",
                 query=(
                     "What happens after the "
                     "experiment tests pass?"
@@ -344,29 +384,24 @@ class AdaptiveMemoryBenchmarkDataset:
                     "state-full-tests"
                 ],
                 metadata={
-                    "evaluation_type": "procedural_graph",
-                    "current_state_id": (
-                        "state-experiment-tests"
-                    )
+                    "evaluation_type": "procedural_graph"
                 }
-            )
+            ),
         ])
 
-    @classmethod
-    def procedural_cases(cls):
-        """
-        Return the separate procedural graph dataset.
-        """
-
-        return cls.build_procedural_cases()
+    # =========================================================
+    # PROCEDURAL RETRIEVAL CASES
+    # =========================================================
 
     @classmethod
-    def procedural_retrieval_cases(cls):
+    def procedural_retrieval_cases(
+        cls
+    ) -> list[EvaluationCase]:
         """
-        Return procedural graph cases.
+        Return procedural graph evaluation cases.
         """
 
         return (
-            cls.build_procedural_cases()
+            cls.procedural_cases()
             .procedural_retrieval_cases()
         )

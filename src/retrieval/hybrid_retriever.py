@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.models.memory import Memory
+from src.models.memory import Memory, MemoryType
 from src.models.procedure import ProcedureState
 from src.routing.memory_router import MemoryRoute
 
@@ -40,19 +40,11 @@ class HybridRetriever:
         remains independently testable.
         """
 
-        self.vector_retriever = (
-            vector_retriever
-        )
+        self.vector_retriever = vector_retriever
+        self.temporal_retriever = temporal_retriever
+        self.graph_retriever = graph_retriever
 
-        self.temporal_retriever = (
-            temporal_retriever
-        )
-
-        self.graph_retriever = (
-            graph_retriever
-        )
-
-    # VECTOR RETRIEVAL
+    
 
     def retrieve_semantic(
         self,
@@ -60,8 +52,8 @@ class HybridRetriever:
         top_k: int = 5
     ) -> list[RetrievalResult]:
         """
-        Retrieve semantic memories using the
-        vector retriever.
+        Retrieve semantic memories using the vector
+        retriever.
         """
 
         if self.vector_retriever is None:
@@ -76,11 +68,19 @@ class HybridRetriever:
 
         for result in results:
 
-            memory = result["memory"]
+            memory = result.get("memory")
+
+            if memory is None:
+                continue
 
             memory_id = result.get(
                 "memory_id"
             )
+
+            if memory_id is None:
+                memory_id = self._memory_id(
+                    memory
+                )
 
             normalized.append(
                 RetrievalResult(
@@ -98,8 +98,226 @@ class HybridRetriever:
 
         return normalized
 
-    # TEMPORAL RETRIEVAL
 
+    def retrieve_procedural_memory(
+        self,
+        query: str,
+        top_k: int = 5
+    ) -> list[RetrievalResult]:
+        """
+        Retrieve procedural memories from the vector
+        memory store.
+
+        The vector store contains multiple memory types,
+        so a larger candidate pool is retrieved first and
+        then filtered to procedural memories.
+
+        Supports both:
+
+            Memory objects
+
+        and:
+
+            serialized dictionary memories
+        """
+
+        if self.vector_retriever is None:
+            return []
+
+        if not isinstance(
+            query,
+            str
+        ) or not query.strip():
+
+            raise ValueError(
+                "query cannot be empty"
+            )
+
+        if top_k <= 0:
+            raise ValueError(
+                "top_k must be greater than 0"
+            )
+
+        
+        # Retrieve enough candidates.
+        #
+        # Procedural memories can have lower semantic
+        # similarity than unrelated semantic memories.
+      
+
+        candidate_k = max(
+            top_k * 5,
+            20
+        )
+
+        raw_results = (
+            self.vector_retriever.search(
+                query=query,
+                top_k=candidate_k
+            )
+        )
+
+        normalized = []
+
+        for result in raw_results:
+
+            if not isinstance(
+                result,
+                dict
+            ):
+                continue
+
+            memory = result.get(
+                "memory"
+            )
+
+            if memory is None:
+                continue
+
+           
+            # Determine memory type.
+            #
+            # The vector store may return:
+            #
+            #   MemoryType.PROCEDURAL
+            #   "procedural"
+            #
+            # or a serialized dictionary containing:
+            #
+            #   {"memory_type": "procedural"}
+          
+
+            memory_type = self._memory_type(
+                memory
+            )
+
+            if not self._is_procedural(
+                memory_type
+            ):
+                continue
+
+            memory_id = result.get(
+                "memory_id"
+            )
+
+            if memory_id is None:
+                memory_id = self._memory_id(
+                    memory
+                )
+
+            normalized.append(
+                RetrievalResult(
+                    source=MemoryRoute.PROCEDURAL,
+                    item=memory,
+                    score=float(
+                        result.get(
+                            "score",
+                            0.0
+                        )
+                    ),
+                    memory_id=memory_id,
+                    metadata={
+                        "memory_type": "procedural"
+                    }
+                )
+            )
+
+        
+
+        normalized.sort(
+            key=lambda result: result.score,
+            reverse=True
+        )
+
+        return normalized[:top_k]
+
+   
+
+    @staticmethod
+    def _memory_type(
+        memory: Any
+    ) -> Any:
+        """
+        Extract memory type from either a Memory object
+        or a serialized dictionary.
+        """
+
+        if isinstance(
+            memory,
+            dict
+        ):
+            return memory.get(
+                "memory_type"
+            )
+
+        return getattr(
+            memory,
+            "memory_type",
+            None
+        )
+
+    @staticmethod
+    def _memory_id(
+        memory: Any
+    ) -> str | None:
+        """
+        Extract memory ID from either a Memory object
+        or a serialized dictionary.
+        """
+
+        if isinstance(
+            memory,
+            dict
+        ):
+            value = memory.get(
+                "memory_id"
+            )
+
+            if value is None:
+                return None
+
+            return str(value)
+
+        value = getattr(
+            memory,
+            "memory_id",
+            None
+        )
+
+        if value is None:
+            return None
+
+        return str(value)
+
+    @staticmethod
+    def _is_procedural(
+        memory_type: Any
+    ) -> bool:
+        """
+        Determine whether a memory type represents
+        procedural memory.
+
+        Supports both Enum and serialized string forms.
+        """
+
+        if memory_type == MemoryType.PROCEDURAL:
+            return True
+
+        if memory_type == MemoryType.PROCEDURAL.value:
+            return True
+
+        if isinstance(
+            memory_type,
+            str
+        ):
+            return (
+                memory_type.lower().strip()
+                == MemoryType.PROCEDURAL.value
+            )
+
+        return False
+
+   
     def retrieve_temporal(
         self,
         start_time,
@@ -131,13 +349,15 @@ class HybridRetriever:
                     score=self._temporal_score(
                         memory
                     ),
-                    memory_id=memory.memory_id
+                    memory_id=self._memory_id(
+                        memory
+                    )
                 )
             )
 
         return normalized
 
-    # PROCEDURAL RETRIEVAL
+    
 
     def retrieve_procedural(
         self,
@@ -179,7 +399,7 @@ class HybridRetriever:
 
         return normalized
 
-    # FUSION
+ 
 
     def fuse(
         self,
@@ -189,7 +409,7 @@ class HybridRetriever:
         """
         Combine results from multiple memory sources.
 
-        Results are sorted by normalized score.
+        Scores are normalized into [0, 1].
         """
 
         if not results:
@@ -215,7 +435,7 @@ class HybridRetriever:
 
         return results[:top_k]
 
-    # DEDUPLICATION
+   
 
     def deduplicate(
         self,
@@ -257,7 +477,7 @@ class HybridRetriever:
 
         return unique_results
 
-    # COMPLETE FUSION PIPELINE
+    
 
     def combine(
         self,
@@ -277,27 +497,36 @@ class HybridRetriever:
             top_k=top_k
         )
 
-    # SCORE HELPERS
+    
 
     @staticmethod
     def _temporal_score(
         memory: Memory
     ) -> float:
         """
-        Initial temporal relevance score.
-
-        For Phase 6, episodic results receive a
-        baseline score based on memory importance.
-
-        More sophisticated temporal ranking will be
-        introduced later.
+        Calculate the initial temporal relevance score.
         """
+
+        importance = getattr(
+            memory,
+            "importance",
+            0.5
+        )
+
+        if isinstance(
+            memory,
+            dict
+        ):
+            importance = memory.get(
+                "importance",
+                0.5
+            )
 
         return max(
             0.0,
             min(
                 1.0,
-                memory.importance
+                float(importance)
             )
         )
 
@@ -306,11 +535,7 @@ class HybridRetriever:
         state: ProcedureState
     ) -> float:
         """
-        Initial procedural relevance score.
-
-        Terminal states receive a slightly higher
-        score because they represent completed
-        procedures.
+        Calculate the procedural graph relevance score.
         """
 
         if state.is_terminal:
@@ -334,8 +559,13 @@ class HybridRetriever:
             for result in results
         ]
 
-        min_score = min(scores)
-        max_score = max(scores)
+        min_score = min(
+            scores
+        )
+
+        max_score = max(
+            scores
+        )
 
         if max_score == min_score:
 

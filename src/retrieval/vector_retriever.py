@@ -21,7 +21,6 @@ class VectorRetriever:
             storage_dir=storage_dir
         )
 
-    # ADD MEMORY
 
     def add_memory(
         self,
@@ -41,7 +40,6 @@ class VectorRetriever:
             embedding
         )
 
-    # SEARCH
 
     def search(
         self,
@@ -52,6 +50,9 @@ class VectorRetriever:
         """
         Convert a text query into an embedding
         and retrieve semantically similar memories.
+
+        The vector store remains responsible for
+        semantic similarity ranking.
         """
 
         if not isinstance(
@@ -80,7 +81,9 @@ class VectorRetriever:
             min_score=min_score
         )
 
+    
     # RETRIEVE
+    # 
     #
     # Compatibility interface used by:
     #
@@ -88,8 +91,7 @@ class VectorRetriever:
     # BaselineRAG
     # Benchmark
     #
-    # The actual retrieval remains implemented
-    # by search().
+
 
     def retrieve(
         self,
@@ -100,9 +102,6 @@ class VectorRetriever:
         """
         Retrieve semantically similar memories.
 
-        This is the standard retrieval interface used
-        by the evaluation and benchmarking pipeline.
-
         Internally delegates to search().
         """
 
@@ -112,7 +111,7 @@ class VectorRetriever:
             min_score=min_score
         )
 
-    # UPDATE MEMORY
+ 
 
     def update_memory(
         self,
@@ -131,7 +130,7 @@ class VectorRetriever:
             embedding
         )
 
-    # DELETE MEMORY
+   
 
     def delete_memory(
         self,
@@ -145,7 +144,7 @@ class VectorRetriever:
             memory_id
         )
 
-    # SAVE
+    
 
     def save(self):
         """
@@ -154,7 +153,6 @@ class VectorRetriever:
 
         self.vector_store.save()
 
-    # LOAD
 
     def load(self):
         """
@@ -163,8 +161,7 @@ class VectorRetriever:
 
         self.vector_store.load()
 
-    # COUNT
-
+  
     def count(self) -> int:
         """
         Return the number of stored memories.
