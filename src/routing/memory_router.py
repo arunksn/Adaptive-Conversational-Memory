@@ -52,7 +52,6 @@ class MemoryRouter:
         "did",
     }
 
-
     PROCEDURAL_KEYWORDS = {
         "steps",
         "step",
@@ -85,8 +84,6 @@ class MemoryRouter:
         "run",
         "running",
     }
-
-   
 
     SEMANTIC_KEYWORDS = {
         "prefer",
@@ -123,7 +120,6 @@ class MemoryRouter:
         "backend",
     }
 
-    
 
     CURRENT_SEMANTIC_PHRASES = {
         "currently",
@@ -144,7 +140,6 @@ class MemoryRouter:
         "latest preferred",
     }
 
-
     EPISODIC_PHRASES = {
         "yesterday",
         "last week",
@@ -160,8 +155,6 @@ class MemoryRouter:
         "what have i done",
     }
 
-
-
     PROCEDURAL_PHRASES = {
         "how do i",
         "how can i",
@@ -174,8 +167,32 @@ class MemoryRouter:
         "when deploying",
         "when installing",
         "when configuring",
-    }
 
+        # Workflow / state-transition phrases
+       
+
+        "what happens after",
+        "what happens next",
+        "what comes next",
+        "what should happen next",
+        "what do i do next",
+        "what should i do next",
+        "what is the next step",
+        "what's the next step",
+        "what is next",
+        "what's next",
+        "after completing",
+        "after finishing",
+        "after implementing",
+        "after starting",
+        "after completing the",
+        "after finishing the",
+        "after the tests pass",
+        "after tests pass",
+        "once completed",
+        "once finished",
+        "once implemented",
+    }
 
 
     def route(
@@ -194,6 +211,7 @@ class MemoryRouter:
         - Strong procedural queries are routed to procedural memory.
         - Current/factual/preference queries favor semantic memory.
         - Ambiguous queries may use multiple memory sources.
+        - Workflow/state-transition questions are procedural.
         - Temporal words such as "recently" do not automatically
           force episodic retrieval when the query asks for a
           current semantic fact.
@@ -218,7 +236,8 @@ class MemoryRouter:
             MemoryRoute.PROCEDURAL: 0,
         }
 
-        
+        # KEYWORD MATCHING
+      
 
         temporal_matches = (
             tokens
@@ -235,9 +254,7 @@ class MemoryRouter:
             & self.SEMANTIC_KEYWORDS
         )
 
-        # Temporal signals receive stronger weight because
-        # explicit temporal queries usually require episodic
-        # memory.
+        # Temporal signals receive stronger weight.
         scores[
             MemoryRoute.EPISODIC
         ] += len(
@@ -258,7 +275,7 @@ class MemoryRouter:
             semantic_matches
         )
 
-     
+       
 
         episodic_phrase_matches = []
 
@@ -275,7 +292,6 @@ class MemoryRouter:
                 ] += 3
 
 
-
         procedural_phrase_matches = []
 
         for phrase in self.PROCEDURAL_PHRASES:
@@ -290,6 +306,7 @@ class MemoryRouter:
                     MemoryRoute.PROCEDURAL
                 ] += 3
 
+  
 
         current_semantic_matches = []
 
@@ -301,27 +318,59 @@ class MemoryRouter:
                     phrase
                 )
 
-                # Current facts/preferences are semantic
-                # memories even when the query contains a
-                # weak temporal word such as "recently".
                 scores[
                     MemoryRoute.SEMANTIC
                 ] += 3
 
-       
+        
 
-        # Example:
+        workflow_transition_phrases = {
+            "what happens after",
+            "what happens next",
+            "what comes next",
+            "what should happen next",
+            "what do i do next",
+            "what should i do next",
+            "what is the next step",
+            "what's the next step",
+            "what is next",
+            "what's next",
+            "after completing",
+            "after finishing",
+            "after implementing",
+            "after starting",
+            "after completing the",
+            "after finishing the",
+            "after the tests pass",
+            "after tests pass",
+            "once completed",
+            "once finished",
+            "once implemented",
+        }
+
+        workflow_transition_matches = []
+
+        for phrase in workflow_transition_phrases:
+
+            if phrase in normalized_query:
+
+                workflow_transition_matches.append(
+                    phrase
+                )
+
+        # A workflow transition question is explicitly
+        # asking about the next state/action in a process.
         #
-        # "What have I been learning recently?"
-        #
-        # "recently" alone should not force episodic
-        # retrieval because the expected information may
-        # represent a current semantic fact.
-        #
-        # If the query contains "recently" together with
-        # semantic concepts such as learning, interests,
-        # technology, project, preference, or development,
-        # give semantic memory priority.
+        # Give it a strong procedural score so words such
+        # as "after", "happens", or "did" cannot incorrectly
+        # dominate the routing decision.
+        if workflow_transition_matches:
+
+            scores[
+                MemoryRoute.PROCEDURAL
+            ] += 6
+
+       
 
         recent_semantic_terms = {
             "learning",
@@ -349,7 +398,6 @@ class MemoryRouter:
                 MemoryRoute.SEMANTIC
             ] += 4
 
-   
 
         explicit_current_signal = (
             bool(current_semantic_matches)
@@ -365,14 +413,13 @@ class MemoryRouter:
 
         if explicit_current_signal:
 
-            # Current semantic information should normally
-            # be retrieved from semantic memory.
             scores[
                 MemoryRoute.SEMANTIC
             ] += 2
 
-            # Weak temporal signals should not dominate a
-            # current-information query.
+            # Current facts/preferences should normally
+            # be retrieved from semantic memory.
+
             if (
                 not episodic_phrase_matches
                 and not (
@@ -394,6 +441,38 @@ class MemoryRouter:
                 )
 
 
+        # A workflow transition is unambiguously procedural.
+        #
+        # Example:
+        #
+        # "What happens after the experiment tests pass?"
+        #
+        # Without this override:
+        #   "after"     -> episodic
+        #   "happens"   -> episodic
+        #
+        # With the override:
+        #   workflow phrase -> procedural
+        #
+        # This prevents a state-transition question from
+        # being treated as a historical event query.
+
+        if workflow_transition_matches:
+
+            scores[
+                MemoryRoute.PROCEDURAL
+            ] = max(
+                scores[
+                    MemoryRoute.PROCEDURAL
+                ],
+                scores[
+                    MemoryRoute.EPISODIC
+                ] + 1
+            )
+
+        # DEFAULT ROUTE
+      
+
         max_score = max(
             scores.values()
         )
@@ -412,7 +491,7 @@ class MemoryRouter:
                 )
             )
 
-  
+       
 
         ranked_routes = sorted(
             scores.items(),
@@ -427,6 +506,7 @@ class MemoryRouter:
             primary_route
         ]
 
+       
 
         if len(ranked_routes) > 1:
 
@@ -436,14 +516,6 @@ class MemoryRouter:
             # Include a secondary source when its signal is
             # meaningful and reasonably close to the primary
             # signal.
-            #
-            # This supports mixed queries such as:
-            #
-            # "What did I previously do when deploying
-            #  my project?"
-            #
-            # which may benefit from both episodic and
-            # procedural memory.
 
             if (
                 second_score > 0
@@ -454,12 +526,15 @@ class MemoryRouter:
                     second_route
                 )
 
-      
+        # CONFIDENCE
+       
 
         confidence = min(
             1.0,
             primary_score / 6.0
         )
+
+        
 
         reason = self._build_reason(
             temporal_matches=temporal_matches,
@@ -469,6 +544,7 @@ class MemoryRouter:
             episodic_phrase_matches=episodic_phrase_matches,
             procedural_phrase_matches=procedural_phrase_matches,
             current_semantic_matches=current_semantic_matches,
+            workflow_transition_matches=workflow_transition_matches,
         )
 
         return RoutingResult(
@@ -477,7 +553,7 @@ class MemoryRouter:
             reason=reason
         )
 
-
+ 
 
     @staticmethod
     def _tokenize(
@@ -514,6 +590,7 @@ class MemoryRouter:
         episodic_phrase_matches: list[str] | None = None,
         procedural_phrase_matches: list[str] | None = None,
         current_semantic_matches: list[str] | None = None,
+        workflow_transition_matches: list[str] | None = None,
     ) -> str:
         """
         Build a human-readable explanation of the
@@ -562,6 +639,17 @@ class MemoryRouter:
                 + ", ".join(
                     sorted(
                         procedural_phrase_matches
+                    )
+                )
+            )
+
+        if workflow_transition_matches:
+
+            reasons.append(
+                "workflow transition phrases: "
+                + ", ".join(
+                    sorted(
+                        workflow_transition_matches
                     )
                 )
             )
